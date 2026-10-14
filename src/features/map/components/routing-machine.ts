@@ -10,6 +10,21 @@ interface RoutingMachineProps extends L.ControlOptions {
 const createRoutineMachineLayer = (props: RoutingMachineProps) => {
   const instance = L.Routing.control({
     collapsible: true,
+    collapseBtn: (itinerary: L.Routing.Itinerary) => {
+      const container = itinerary.getContainer();
+      if (!container) return;
+      const button = L.DomUtil.create('button', 'leaflet-routing-collapse-btn');
+      button.type = 'button';
+      button.setAttribute('aria-label', 'Toggle route instructions');
+      button.setAttribute('aria-expanded', 'true');
+      L.DomEvent.on(button, 'click', () => {
+        const isCollapsed = container.classList.contains('leaflet-routing-container-hide');
+        if (isCollapsed) itinerary.show();
+        else itinerary.hide();
+        button.setAttribute('aria-expanded', String(isCollapsed));
+      });
+      container.prepend(button);
+    },
     plan: L.Routing.plan(props.waypoints, {
       addWaypoints: false,
       draggableWaypoints: true,

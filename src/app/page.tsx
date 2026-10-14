@@ -3,10 +3,13 @@
 import { getLiveGasStations } from '@/GasPrices/client';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { MapPinned, Route, Search } from 'lucide-react';
+import { ChevronDown, MapPinned, Navigation, Route, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { CommutePanel } from '@/features/commute/components/CommutePanel';
+import { FuelGradeControl } from '@/components/FuelGradeControl';
+import { StatusMessage } from '@/components/StatusMessage';
+import { getWebDirectionsUrl, openPreferredDirections } from '@/lib/mapLinks';
 import { buildTripPlan } from '@/features/map/components/routing-engine';
 import { COMMUTE_ARRIVAL_RADIUS_METERS, getNextCommuteStop } from '@/lib/commute';
 import { getRouteMetrics, haversineDistance } from '@/lib/routingUtils';
@@ -15,34 +18,6 @@ import { useLocationStore } from '@/store/useLocationStore';
 import { FuelGrade, FuelPriceOption, GasStation, RouteLegEstimate, TripEstimateSummary } from '@/types';
 
 const PriceMap = dynamic(() => import('@/features/map/components/PriceMap').then(mod => mod.PriceMap), { ssr: false });
-
-const legendMarker = (fill: string, stroke: string, innerFill: string) =>
-  `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="34" viewBox="0 0 24 34">
-      <path fill="${fill}" stroke="${stroke}" stroke-width="1.5" d="M12 1C6.48 1 2 5.48 2 11c0 7.33 10 21 10 21s10-13.67 10-21C22 5.48 17.52 1 12 1z"/>
-      <circle cx="12" cy="11" r="3.5" fill="${innerFill}"/>
-    </svg>
-  `)}`;
-
-const gasPriceLegendMarker = (priceLabel: string) =>
-  `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="74" height="56" viewBox="0 0 74 56">
-      <rect x="7" y="4" width="60" height="24" rx="12" fill="#0f172a" stroke="rgba(255,255,255,0.88)" stroke-width="1.2"/>
-      <text x="37" y="20" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="11" font-weight="700" fill="#ffffff">${priceLabel}</text>
-      <circle cx="37" cy="40" r="7" fill="#ef4444" stroke="#ffffff" stroke-width="2"/>
-    </svg>
-  `)}`;
-
-const legendItems = [
-  {
-    label: 'Your location',
-    icon: legendMarker('#16a34a', '#166534', '#eafff0'),
-  },
-  {
-    label: 'Gas station',
-    icon: gasPriceLegendMarker('$4.48'),
-  },
-];
 
 interface GasStationWithDistance extends GasStation {
   distanceMiles: number | null;
@@ -138,75 +113,25 @@ const SearchControls = ({
   onFuelGradeChange,
   onSearchRadiusChange,
 }: SearchControlsProps) => (
-  <div className="flex w-full flex-col gap-4">
-    <section className="w-full" aria-labelledby={`${idPrefix}-fuel-grade-heading`}>
-      <div className="rounded-2xl border border-white/70 bg-white/90 p-5 shadow-lg backdrop-blur">
-        <div className="flex flex-col gap-4">
-          <div>
-            <h3 id={`${idPrefix}-fuel-grade-heading`} className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Fuel Grade</h3>
-          </div>
-          <div className="grid w-full grid-cols-2 gap-2 lg:grid-cols-4">
-            {FUEL_GRADE_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onFuelGradeChange(option.value)}
-                className={`min-w-0 rounded-full px-4 py-3 text-sm font-semibold ring-1 transition-colors duration-200 ${
-                  selectedFuelGrade === option.value
-                    ? 'bg-primary text-primary-foreground ring-emerald-200/70 shadow-[0_10px_24px_-12px_rgba(13,148,136,0.8)]'
-                    : 'bg-slate-100 text-slate-700 ring-slate-200 hover:bg-slate-200'
-                }`}
-                aria-pressed={selectedFuelGrade === option.value}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section className="w-full" aria-labelledby={`${idPrefix}-search-radius-heading`}>
-      <div className="rounded-2xl border border-white/70 bg-white/90 p-5 shadow-lg backdrop-blur">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h3 id={`${idPrefix}-search-radius-heading`} className="text-base font-semibold text-slate-900 md:text-lg">Search Radius</h3>
-          </div>
-          <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-            {searchRadiusMiles} mi
-          </span>
-        </div>
-        <input
-          type="range"
-          min={MIN_SEARCH_RADIUS_MILES}
-          max={MAX_SEARCH_RADIUS_MILES}
-          step={1}
-          value={searchRadiusMiles}
-          onChange={(event) => onSearchRadiusChange(Number(event.target.value))}
-          className="mt-4 h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-primary"
-        />
-        <div className="mt-2 flex justify-between text-xs font-medium uppercase tracking-[0.16em] text-slate-400">
-          <span>{MIN_SEARCH_RADIUS_MILES} miles</span>
-          <span>{MAX_SEARCH_RADIUS_MILES} miles</span>
-        </div>
-        <p className="mt-4 text-sm text-slate-600">
-          {hasSearchedGas
-            ? `Showing ${gasStationsToDisplayCount} stations with ${formatFuelGradeLabel(selectedFuelGrade).toLowerCase()} prices within ${searchRadiusMiles} miles.`
-            : 'Choose a radius, then find nearby gas stations with live prices.'}
-        </p>
-        {isGasStationsLoading && (
-          <p className="mt-2 text-sm text-slate-500">Loading live gas station prices...</p>
-        )}
-        {gasStationsErrorMessage && (
-          <p className="mt-2 text-sm text-rose-600">{gasStationsErrorMessage}</p>
-        )}
-        {hasSearchedGas && !isGasStationsLoading && gasStationsInRadiusCount > 0 && gasStationsToDisplayCount === 0 && (
-          <p className="mt-2 text-sm text-slate-500">
-            No stations in this search area currently expose a {formatFuelGradeLabel(selectedFuelGrade).toLowerCase()} price.
-          </p>
-        )}
-      </div>
-    </section>
+  <div className="space-y-3">
+    <FuelGradeControl value={selectedFuelGrade} onChange={onFuelGradeChange} />
+    <div className="flex items-center gap-3">
+      <label htmlFor={`${idPrefix}-radius`} className="field-label shrink-0">Radius</label>
+      <input id={`${idPrefix}-radius`} type="range" min={MIN_SEARCH_RADIUS_MILES}
+        max={MAX_SEARCH_RADIUS_MILES} step={1} value={searchRadiusMiles}
+        onChange={(event) => onSearchRadiusChange(Number(event.target.value))}
+        className="min-h-11 min-w-0 flex-1 accent-primary" />
+      <output htmlFor={`${idPrefix}-radius`} className="w-12 text-right text-sm font-semibold tabular-nums">{searchRadiusMiles} mi</output>
+    </div>
+    <div aria-live="polite" className="text-xs text-muted-foreground">
+      {isGasStationsLoading ? <p role="status">Finding live prices…</p> : hasSearchedGas && (
+        <p>{gasStationsToDisplayCount} stations with {formatFuelGradeLabel(selectedFuelGrade).toLowerCase()} prices within {searchRadiusMiles} mi.</p>
+      )}
+      {gasStationsErrorMessage && <StatusMessage message={gasStationsErrorMessage} className="mt-2" />}
+      {hasSearchedGas && !isGasStationsLoading && gasStationsInRadiusCount > 0 && gasStationsToDisplayCount === 0 && (
+        <p className="mt-2">No {formatFuelGradeLabel(selectedFuelGrade).toLowerCase()} prices available here. Try another fuel grade.</p>
+      )}
+    </div>
   </div>
 );
 
@@ -651,21 +576,23 @@ export default function Home() {
     : null;
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden bg-background px-4 pb-28 pt-6 font-sans text-foreground md:px-8 md:pb-32 md:pt-10">
-      <div className="relative z-10 flex w-full flex-col items-center">
-        <h1 className="mb-6 flex items-center justify-center gap-3 text-center text-3xl font-semibold tracking-tight text-white md:mb-8 md:text-5xl">
-          <Image src="/AppIcon.png" alt="Go Go Gas! icon" width={80} height={80} className="h-16 w-16 rounded-xl md:h-20 md:w-20" />
+    <main className="app-shell">
+      <div className="app-body">
+        <header className="app-header">
+        <h1 className="flex items-center gap-2 text-base font-bold tracking-tight">
+          <Image src="/AppIcon.png" alt="" width={32} height={32} className="size-8 rounded-lg" />
           <span className="brand-title">Go Go Gas!</span>
         </h1>
+        </header>
 
-        <div className={`w-full ${activeTab === 'map' ? 'max-w-6xl' : 'max-w-2xl'}`}>
+        <div className={activeTab === 'map' ? 'map-content' : 'page-content'}>
           <section
             aria-labelledby="find-gas-heading"
             aria-hidden={activeTab !== 'home'}
             className={activeTab === 'home' ? 'flex w-full flex-col items-center' : 'hidden'}
           >
-            <h2 id="find-gas-heading" className="sr-only">Local gas</h2>
-            <div className="mb-4 w-full px-2">
+            <div className="page-heading"><h2 id="find-gas-heading">Local Gas</h2><p>Compare prices nearby.</p></div>
+            <div className="surface w-full p-4">
               <SearchControls
                 idPrefix="home"
                 selectedFuelGrade={selectedFuelGrade}
@@ -678,88 +605,76 @@ export default function Home() {
                 onFuelGradeChange={setSelectedFuelGrade}
                 onSearchRadiusChange={setSearchRadiusMiles}
               />
-            </div>
-
             <button
               type="button"
               onClick={handleFindGasClick}
               disabled={latitude === null || longitude === null || isGasStationsLoading}
-              className="mb-4 w-full max-w-sm rounded-full bg-blue-600 px-6 py-3 text-center text-sm font-semibold text-white shadow-[0_12px_30px_-12px_rgba(37,99,235,0.8)] ring-1 ring-blue-200/70 transition-transform duration-300 ease-in-out hover:scale-[1.02] hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 md:text-base"
+              className="action-primary mt-3 w-full"
             >
-              {isGasStationsLoading ? 'Finding Gas...' : 'Find Local Gas'}
+              <Search size={18} aria-hidden="true" />{isGasStationsLoading ? 'Finding gas…' : 'Find local gas'}
             </button>
+            </div>
             {isLocationFetching && (
-              <p className="-mt-2 mb-4 text-sm font-medium text-white" role="status">
-                Fetching Location
-                <span className="location-fetching-dots" aria-hidden="true">
-                  <span>.</span><span>.</span><span>.</span>
-                </span>
+              <p className="mt-3 text-sm text-muted-foreground" role="status">
+                Finding your location…
               </p>
+            )}
+            {locationErrorMessage && <p className="status-message status-error mt-3 w-full" role="alert">{locationErrorMessage}</p>}
+            {!hasSearchedGas && !isLocationFetching && !locationErrorMessage && (
+              <div className="empty-state"><MapPinned size={24} aria-hidden="true" /><p>Ready to find nearby fuel</p><span>Choose your fuel grade and radius, then find local gas.</span></div>
             )}
 
             {hasSearchedGas && gasStationsToDisplay.length > 0 && (
-              <div className="mt-6 w-full rounded-2xl border border-white/70 bg-white/90 p-5 shadow-lg backdrop-blur animate-fade-in">
-                <div className="flex items-center justify-between gap-4">
+              <div className="surface mt-4 w-full overflow-hidden">
+                <div className="flex items-center justify-between gap-3 px-4 pt-3">
                   <div>
-                    <h3 className="text-xl font-semibold text-slate-900 md:text-2xl">Best Gas Stations</h3>
-                    <p className="text-sm text-slate-500">
-                      {gasStationsToDisplay.length} station{gasStationsToDisplay.length === 1 ? '' : 's'} in your current search radius.
+                    <h3 className="text-base font-semibold">Nearby stations</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {gasStationsToDisplay.length} station{gasStationsToDisplay.length === 1 ? '' : 's'} found
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => setIsBestGasExpanded((currentValue) => !currentValue)}
-                    className="rounded-full bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 ring-1 ring-slate-300 transition-colors duration-200 hover:bg-slate-300"
+                    className="action-quiet"
                     aria-expanded={isBestGasExpanded}
+                    aria-controls="station-results"
                   >
                     {isBestGasExpanded ? 'Collapse' : 'Expand'}
                   </button>
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {[
-                    { label: 'Best Choice', value: 'best' as const },
-                    { label: 'Lowest Price', value: 'price' as const },
-                    { label: 'Lowest Distance', value: 'distance' as const },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setGasSortMode(option.value)}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold ring-1 transition-colors duration-200 ${
-                        gasSortMode === option.value
-                          ? 'bg-primary text-primary-foreground ring-emerald-200/70 shadow-[0_10px_24px_-12px_rgba(13,148,136,0.8)]'
-                          : 'bg-slate-100 text-slate-700 ring-slate-200 hover:bg-slate-200'
-                      }`}
-                      aria-pressed={gasSortMode === option.value}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-3 border-b px-4 py-2">
+                  <label htmlFor="gas-sort" className="field-label">Sort by</label>
+                  <select id="gas-sort" className="form-input ml-auto max-w-44" value={gasSortMode}
+                    onChange={(event) => setGasSortMode(event.target.value as GasSortMode)}>
+                    <option value="best">Best choice</option><option value="price">Lowest price</option><option value="distance">Nearest</option>
+                  </select>
                 </div>
 
                 {isBestGasExpanded && (
-                  <ul className="mt-4 space-y-3">
+                  <ul id="station-results" className="divide-y divide-border">
                     {gasStationsToDisplay.map(station => (
-                      <li key={station.id} className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <li key={station.id} className="station-row">
                         <div className="min-w-0">
-                          <h4 className="truncate text-base font-medium text-slate-900 md:text-lg">{station.name}</h4>
-                          <p className="truncate text-sm text-slate-500">{station.address}</p>
-                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-500">
-                            {station.distanceMiles !== null && <span>{station.distanceMiles.toFixed(1)} miles away</span>}
+                          <h4 className="text-sm font-semibold break-words">{station.name}</h4>
+                          <p className="mt-1 text-xs text-muted-foreground break-words">{station.address}</p>
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            {station.distanceMiles !== null && <span>{station.distanceMiles.toFixed(1)} mi away</span>}
                             <span>{formatFuelGradeLabel(selectedFuelGrade)}</span>
                             {station.priceUpdatedAt && <span>Updated {formatUpdatedTime(station.priceUpdatedAt)}</span>}
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between gap-3 sm:justify-end">
-                          <span className="text-lg font-bold text-primary">${station.pricePerGallon.toFixed(2)}/gal</span>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="price-value">${station.pricePerGallon.toFixed(2)}<span className="block text-right text-xs font-normal text-muted-foreground">/gal</span></span>
                           <button
                             type="button"
                             onClick={() => handleGasStationListClick(station.id)}
-                            className={`rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-black/10 transition-all duration-300 ease-in-out ${activeSelectedGasStationId === station.id ? 'bg-primary text-primary-foreground shadow-[0_10px_24px_-12px_rgba(13,148,136,0.8)]' : 'bg-slate-200 text-slate-800 shadow-[0_10px_24px_-16px_rgba(15,23,42,0.35)] hover:bg-slate-300'}`}
+                            className="action-quiet text-primary"
+                            aria-label={`View ${station.name} on map`}
                           >
-                            {activeSelectedGasStationId === station.id ? 'View Map' : 'Select'}
+                            View map
                           </button>
                         </div>
                       </li>
@@ -770,8 +685,8 @@ export default function Home() {
             )}
 
             {hasSearchedGas && !isGasStationsLoading && gasStationsToDisplay.length === 0 && !gasStationsErrorMessage && (
-              <div className="mt-6 w-full max-w-md rounded-2xl border border-white/70 bg-white/90 p-5 shadow-lg backdrop-blur animate-fade-in">
-                <p className="text-center text-base text-slate-700 md:text-lg">No gas stations with live prices were found in this radius.</p>
+              <div className="empty-state">
+                <Search size={24} aria-hidden="true" /><p>No live prices found</p><span>Try a wider radius or another fuel grade.</span>
               </div>
             )}
           </section>
@@ -781,7 +696,7 @@ export default function Home() {
             aria-hidden={activeTab !== 'commute'}
             className={activeTab === 'commute' ? 'flex w-full flex-col items-center' : 'hidden'}
           >
-            <h2 id="commute-heading" className="sr-only">Commute route planner</h2>
+            <div className="page-heading"><h2 id="commute-heading">Commuter Gas</h2><p>Plan your drive around fuel stops.</p></div>
             <CommutePanel
               origin={userLocation}
               locationErrorMessage={locationErrorMessage}
@@ -799,27 +714,8 @@ export default function Home() {
             className={activeTab === 'map' ? 'flex w-full flex-col items-center' : 'hidden'}
           >
             <h2 id="map-heading" className="sr-only">Map</h2>
-            {commuteMapPlan ? (
-              <p className="mb-4 w-full px-2 text-center text-lg font-semibold text-white md:text-xl">
-                Saved route to {commuteMapPlan.destination.name}
-              </p>
-            ) : selectedGasStation ? (
-              <p className="mb-4 w-full px-2 text-center text-lg font-semibold text-white md:text-xl">
-                Route to {selectedGasStation.name}
-              </p>
-            ) : null}
-
-            {commutePlan && selectedGasStation && (
-              <button
-                type="button"
-                onClick={() => setSelectedGasStationId(null)}
-                className="mb-4 rounded-full bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-lg ring-1 ring-blue-200 hover:bg-blue-50"
-              >
-                Return to Commute Route
-              </button>
-            )}
-
-            <div className="relative z-10 h-[calc(100vh-17rem)] min-h-[420px] w-full overflow-hidden rounded-2xl border border-white/70 bg-white/80 shadow-[0_20px_60px_-20px_rgba(15,23,42,0.35)] backdrop-blur md:h-[560px]">
+            <div className="map-workspace" data-selected={!!selectedGasStation}>
+            <div className="map-canvas">
               <PriceMap
                 onGasStationClick={handleGasStationMapClick}
                 selectedGasStationId={activeSelectedGasStationId}
@@ -832,30 +728,21 @@ export default function Home() {
               />
             </div>
 
-            <div className="my-4 flex w-full justify-center px-2">
-              <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-full border border-white/70 bg-white/90 px-5 py-3 shadow-lg backdrop-blur">
-                {legendItems.map(item => (
-                  <div key={item.label} className="flex items-center gap-2">
-                    <Image
-                      src={item.icon}
-                      alt=""
-                      aria-hidden="true"
-                      width={item.label === 'Gas station' ? 74 : 20}
-                      height={item.label === 'Gas station' ? 56 : 28}
-                      className={item.label === 'Gas station' ? 'h-10 w-[3.75rem]' : 'h-7 w-5'}
-                    />
-                    <span className="text-sm font-medium text-slate-700">{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <aside className="map-panel" aria-label="Map details and settings">
+            <div className="map-legend"><span><i className="location-dot" />Your location</span><span><i className="station-dot" />Gas station</span></div>
             {commuteMapPlan && (
-              <p className="mb-4 text-center text-xs font-medium text-white/80">
-                Gas price and station data provided by Google Places.
-              </p>
+              <div className="space-y-3 p-4">
+                <p className="text-xs text-muted-foreground">Saved commute route</p>
+                <h3 className="text-base font-semibold break-words">{commuteMapPlan.destination.name}</h3>
+                <p className="text-sm text-muted-foreground">{formatMiles(commuteMapPlan.totalDistanceMeters)} · {formatDuration(commuteMapPlan.totalDurationSeconds)}</p>
+                <button type="button" onClick={() => setActiveTab('commute')} className="action-primary w-full">View commute details</button>
+                <p className="text-xs text-muted-foreground">Gas price and station data provided by Google Places.</p>
+              </div>
             )}
 
-            {!commuteMapPlan && <div className="mb-4 w-full max-w-2xl px-2">
+            {!commuteMapPlan && <details className="map-settings" open={!hasSearchedGas || !!gasStationsErrorMessage}>
+              <summary>Search settings <span className="ml-auto text-xs font-normal text-muted-foreground">{formatFuelGradeLabel(selectedFuelGrade)} · {searchRadiusMiles} mi</span><ChevronDown size={16} aria-hidden="true" /></summary>
+              <div className="px-4 pb-4">
               <SearchControls
                 idPrefix="map"
                 selectedFuelGrade={selectedFuelGrade}
@@ -868,59 +755,65 @@ export default function Home() {
                 onFuelGradeChange={setSelectedFuelGrade}
                 onSearchRadiusChange={setSearchRadiusMiles}
               />
-            </div>}
+              <button type="button" onClick={handleFindGasClick} disabled={!userLocation || isGasStationsLoading} className="action-primary mt-3 w-full"><Search size={18} aria-hidden="true" />{isGasStationsLoading ? 'Finding gas…' : 'Find local gas'}</button>
+              </div>
+            </details>}
+            {!commuteMapPlan && selectedGasStation && <details className="station-details" open key={selectedGasStation.id}>
+              <summary>Selected station<ChevronDown size={16} aria-hidden="true" /></summary>
+              <div className="space-y-3 px-4 pb-4">
+                <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 text-base font-semibold break-words">{selectedGasStation.name}</h3><span className="price-value shrink-0">${selectedGasStation.pricePerGallon.toFixed(2)}<span className="block text-right text-xs font-normal text-muted-foreground">/gal</span></span></div>
+                <p className="text-sm text-muted-foreground break-words">{selectedGasStation.address}</p>
+                <p className="text-xs text-muted-foreground">{formatFuelGradeLabel(selectedFuelGrade)}{selectedGasStation.distanceMiles !== null && ` · ${selectedGasStation.distanceMiles.toFixed(1)} mi away`}</p>
+                {selectedGasStation.priceUpdatedAt && <p className="text-xs text-muted-foreground">Updated {formatUpdatedTime(selectedGasStation.priceUpdatedAt)}</p>}
+                <a className="action-primary w-full" href={getWebDirectionsUrl(selectedGasStation)} target="_blank" rel="noreferrer" onClick={(event) => { event.preventDefault(); openPreferredDirections(selectedGasStation); }}><Navigation size={18} aria-hidden="true" />Open in Maps</a>
+                {commutePlan && <button type="button" onClick={() => setSelectedGasStationId(null)} className="action-secondary w-full">Return to commute route</button>}
+              </div>
+            </details>}
 
             {!commuteMapPlan && (tripPlan || isTripEstimateLoading) && (
-              <div className="mb-4 w-full max-w-xl px-2">
-                <div className="rounded-2xl border border-white/70 bg-white/90 p-5 shadow-lg backdrop-blur">
+              <div className="border-t p-4">
+                <div>
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <h2 className="text-base font-semibold text-slate-900 md:text-lg">Trip Estimates</h2>
+                      <h3 className="text-sm font-semibold">Trip estimates</h3>
                     </div>
                     {isTripEstimateLoading && (
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600">
-                        Calculating...
+                      <span className="text-xs text-muted-foreground" role="status">
+                        Calculating…
                       </span>
                     )}
                   </div>
 
                   {tripPlan && tripEstimateSummary && (
-                    <div className="mt-4 space-y-3">
+                    <div className="mt-3 divide-y divide-border">
                       {tripEstimateSummary.legs.map((leg, index) => {
                         const destinationStop = tripPlan.orderedStops[index + 1];
 
                         return (
-                          <div key={`${leg.fromStopId}-${leg.toStopId}`} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                          <div key={`${leg.fromStopId}-${leg.toStopId}`} className="flex items-center justify-between gap-3 py-3">
                             <div>
-                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                Stop {index + 1}
-                              </p>
-                              <p className="text-sm font-medium text-slate-900">Drive to gas station</p>
-                              <p className="text-sm text-slate-500">{destinationStop.name}</p>
-                              <p className="text-sm text-slate-500">{destinationStop.address}</p>
+                              <p className="text-sm font-medium">Drive to station</p>
+                              <p className="text-xs text-muted-foreground break-words">{destinationStop.name}</p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm font-semibold text-slate-900">{formatMiles(leg.distanceMeters)}</p>
-                              <p className="text-sm text-slate-500">{formatDuration(leg.durationSeconds)}</p>
+                            <div className="shrink-0 text-right tabular-nums">
+                              <p className="text-sm font-semibold">{formatMiles(leg.distanceMeters)}</p>
+                              <p className="text-xs text-muted-foreground">{formatDuration(leg.durationSeconds)}</p>
                             </div>
                           </div>
                         );
                       })}
 
                       {tripEstimateSummary.returnToStart && (
-                        <div className="flex items-center justify-between gap-4 rounded-xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-3">
+                        <div className="flex items-center justify-between gap-3 py-3">
                           <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                              Return
-                            </p>
-                            <p className="text-sm font-medium text-slate-900">Estimated drive back home</p>
-                            <p className="text-sm text-slate-500">Hidden from the map route</p>
+                            <p className="text-sm font-medium">Return to start</p>
+                            <p className="text-xs text-muted-foreground">Estimate only; not on map</p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-sm font-semibold text-slate-900">
+                          <div className="shrink-0 text-right tabular-nums">
+                            <p className="text-sm font-semibold">
                               {formatMiles(tripEstimateSummary.returnToStart.distanceMeters)}
                             </p>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-xs text-muted-foreground">
                               {formatDuration(tripEstimateSummary.returnToStart.durationSeconds)}
                             </p>
                           </div>
@@ -931,17 +824,19 @@ export default function Home() {
                 </div>
               </div>
             )}
+            </aside>
+            </div>
           </section>
         </div>
       </div>
 
-      <nav aria-label="Primary navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-white/70 bg-white/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_30px_-20px_rgba(15,23,42,0.35)] backdrop-blur">
-        <div className="mx-auto grid w-full max-w-xl grid-cols-3 gap-2 sm:gap-3">
+      <nav aria-label="Primary navigation" className="primary-nav">
+        <div className="nav-items">
           <button
             type="button"
             onClick={handleMapTabClick}
             aria-current={activeTab === 'map' ? 'page' : undefined}
-            className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-2 py-3 text-sm font-semibold sm:px-4 ${activeTab === 'map' ? 'bg-blue-100 text-blue-800' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+            className="nav-item"
           >
             <MapPinned aria-hidden="true" size={19} />
             Map
@@ -950,7 +845,7 @@ export default function Home() {
             type="button"
             onClick={() => setActiveTab('home')}
             aria-current={activeTab === 'home' ? 'page' : undefined}
-            className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-2 py-3 text-sm font-semibold sm:px-4 ${activeTab === 'home' ? 'bg-blue-100 text-blue-800' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+            className="nav-item"
           >
             <Search aria-hidden="true" size={19} />
             Local Gas
@@ -959,10 +854,10 @@ export default function Home() {
             type="button"
             onClick={() => setActiveTab('commute')}
             aria-current={activeTab === 'commute' ? 'page' : undefined}
-            className={`flex min-h-12 items-center justify-center gap-2 rounded-xl px-2 py-3 text-sm font-semibold sm:px-4 ${activeTab === 'commute' ? 'bg-blue-100 text-blue-800' : 'bg-white text-slate-700 hover:bg-slate-100'}`}
+            className="nav-item"
           >
             <Route aria-hidden="true" size={19} />
-            Commute
+            Commuter Gas
           </button>
         </div>
       </nav>

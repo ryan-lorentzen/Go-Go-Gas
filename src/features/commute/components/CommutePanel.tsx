@@ -1,7 +1,9 @@
 'use client';
 
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Fuel, LoaderCircle, MapPin, Navigation, Route, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, Fuel, LoaderCircle, MapPin, Navigation, Trash2 } from 'lucide-react';
+import { FuelGradeControl } from '@/components/FuelGradeControl';
+import { StatusMessage } from '@/components/StatusMessage';
 
 import {
   createCommutePlan,
@@ -18,13 +20,6 @@ import {
 import { getWebDirectionsUrl, openPreferredDirections } from '@/lib/mapLinks';
 import { useCommuteStore } from '@/store/useCommuteStore';
 import { FuelGrade, GeocodedDestination, RouteWaypoint } from '@/types';
-
-const FUEL_GRADE_OPTIONS: { value: FuelGrade; label: string }[] = [
-  { value: 'regular', label: 'Regular' },
-  { value: 'midgrade', label: 'Midgrade' },
-  { value: 'premium', label: 'Premium' },
-  { value: 'diesel', label: 'Diesel' },
-];
 
 const formatMiles = (distanceMeters: number) => `${(distanceMeters / METERS_PER_MILE).toFixed(1)} mi`;
 const createSessionToken = () => crypto.randomUUID();
@@ -255,27 +250,18 @@ export const CommutePanel = ({
 
   if (!hasHydrated) {
     return (
-      <div className="w-full rounded-2xl border border-white/70 bg-white/90 p-6 text-center shadow-lg backdrop-blur">
-        <p className="text-sm font-medium text-slate-600">Loading your saved commute...</p>
+      <div className="surface w-full p-4" role="status">
+        <p className="text-sm text-muted-foreground">Loading your saved commute…</p>
       </div>
     );
   }
 
-  return (
-    <div className="flex w-full flex-col gap-5">
-      <section className="overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-xl backdrop-blur">
-        <div className="bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 px-6 py-6 text-white">
-          <div className="flex items-center gap-3">
-            <span className="rounded-xl bg-white/15 p-3 ring-1 ring-white/20"><Route aria-hidden="true" size={24} /></span>
-            <div>
-              <h2 className="text-2xl font-semibold">Plan a fuel-smart route</h2>
-            </div>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-5 p-6">
+  const planningForm = (
+      <details className="planner-section surface" open={!plan}>
+        <summary>{plan ? 'Plan another route' : 'Plan your route'}<ChevronDown className="ml-auto" size={16} aria-hidden="true" /></summary>
+        <form onSubmit={handleSubmit} className="space-y-4 px-4 pb-4">
           <div>
-            <label htmlFor="commute-address" className="text-sm font-semibold text-slate-800">Destination address</label>
+            <label htmlFor="commute-address" className="field-label">Destination</label>
             <div className="relative mt-2">
               <MapPin aria-hidden="true" size={18} className="absolute left-3 top-3.5 text-slate-400" />
               <input
@@ -290,14 +276,14 @@ export const CommutePanel = ({
                   setErrorMessage(null);
                 }}
                 onKeyDown={handleAddressKeyDown}
-                placeholder="1600 Pennsylvania Avenue NW, Washington, DC"
+                placeholder="Search an address or place"
                 autoComplete="off"
                 role="combobox"
                 aria-autocomplete="list"
                 aria-expanded={destinationSuggestions.length > 0}
                 aria-controls="commute-address-suggestions"
                 aria-activedescendant={activeSuggestionIndex >= 0 ? `commute-address-suggestion-${activeSuggestionIndex}` : undefined}
-                className={`w-full rounded-xl border bg-white py-3 pl-10 pr-11 text-base text-slate-900 shadow-sm outline-none transition focus:ring-4 ${selectedDestination ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-100' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-100'}`}
+                className="form-input pl-10 pr-11"
                 maxLength={160}
                 required
               />
@@ -311,7 +297,7 @@ export const CommutePanel = ({
                 <div
                   id="commute-address-suggestions"
                   role="listbox"
-                  className="absolute inset-x-0 top-[calc(100%+0.4rem)] z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
+                  className="absolute inset-x-0 top-[calc(100%+0.25rem)] z-20 max-h-64 overflow-y-auto rounded-lg border bg-white shadow-md"
                 >
                   {destinationSuggestions.map((suggestion, index) => (
                     <button
@@ -323,28 +309,28 @@ export const CommutePanel = ({
                       onMouseDown={(event) => event.preventDefault()}
                       onMouseEnter={() => setActiveSuggestionIndex(index)}
                       onClick={() => void selectSuggestion(suggestion)}
-                      className={`block w-full border-b border-slate-100 px-4 py-3 text-left last:border-b-0 ${activeSuggestionIndex === index ? 'bg-blue-50' : 'bg-white hover:bg-slate-50'}`}
+                      className={`block min-h-11 w-full border-b px-3 py-3 text-left last:border-b-0 ${activeSuggestionIndex === index ? 'bg-secondary' : 'bg-white hover:bg-secondary'}`}
                     >
-                      <span className="block text-sm font-semibold text-slate-900">{suggestion.mainText}</span>
+                      <span className="block text-sm font-semibold">{suggestion.mainText}</span>
                       {suggestion.secondaryText && (
-                        <span className="mt-0.5 block text-xs text-slate-500">{suggestion.secondaryText}</span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">{suggestion.secondaryText}</span>
                       )}
                     </button>
                   ))}
-                  <div className="bg-slate-50 px-4 py-2 text-right text-[11px] font-semibold text-slate-500">
+                  <div className="bg-secondary px-3 py-2 text-right text-[11px] text-muted-foreground">
                     Powered by Google
                   </div>
                 </div>
               )}
             </div>
-            <p className="mt-2 text-xs text-slate-500">
-              {selectedDestination ? 'Destination confirmed.' : 'Type at least three characters, then choose a suggested address.'}
+            <p className="mt-2 text-xs text-muted-foreground">
+              {selectedDestination ? 'Destination confirmed.' : 'Type three or more characters and choose a suggestion.'}
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="range-fields">
             <div>
-              <label htmlFor="current-range" className="text-sm font-semibold text-slate-800">Miles currently in tank</label>
+              <label htmlFor="current-range" className="field-label">Current range (mi)</label>
               <input
                 id="current-range"
                 type="number"
@@ -355,15 +341,15 @@ export const CommutePanel = ({
                 value={currentRange}
                 onChange={(event) => setCurrentRange(event.target.value)}
                 placeholder="400"
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                className="form-input mt-2"
                 required
               />
               {safeCurrentRange !== null && (
-                <p className="mt-2 text-xs font-medium text-slate-500">First stop planned within {safeCurrentRange.toFixed(0)} safe miles.</p>
+                <p className="mt-2 text-xs text-muted-foreground">First stop within {safeCurrentRange.toFixed(0)} safe miles.</p>
               )}
             </div>
             <div>
-              <label htmlFor="full-tank-range" className="text-sm font-semibold text-slate-800">Normal full-tank range</label>
+              <label htmlFor="full-tank-range" className="field-label">Full-tank range (mi)</label>
               <input
                 id="full-tank-range"
                 type="number"
@@ -374,52 +360,39 @@ export const CommutePanel = ({
                 value={fullTankRange}
                 onChange={(event) => setFullTankRange(event.target.value)}
                 placeholder="420"
-                className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                className="form-input mt-2"
                 required
               />
             </div>
           </div>
 
-          <fieldset>
-            <legend className="text-sm font-semibold text-slate-800">Fuel grade</legend>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {FUEL_GRADE_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setFuelGrade(option.value)}
-                  aria-pressed={fuelGrade === option.value}
-                  className={`rounded-full px-3 py-2.5 text-sm font-semibold ring-1 ${fuelGrade === option.value ? 'bg-primary text-primary-foreground ring-emerald-200' : 'bg-slate-100 text-slate-700 ring-slate-200 hover:bg-slate-200'}`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </fieldset>
+          <FuelGradeControl value={fuelGrade} onChange={setFuelGrade} />
 
           <button
             type="submit"
             disabled={!origin || !selectedDestination || isSearchingAddress || isResolvingAddress || isPlanning}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3.5 text-base font-semibold text-white shadow-[0_14px_30px_-14px_rgba(37,99,235,0.9)] hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="action-primary w-full"
           >
-            <Navigation aria-hidden="true" size={19} />
-            {isPlanning ? 'Planning safe stops...' : 'Plan Route'}
+            {isPlanning ? <LoaderCircle aria-hidden="true" size={18} className="animate-spin" /> : <Navigation aria-hidden="true" size={18} />}
+            {isPlanning ? 'Planning safe stops…' : 'Plan route'}
           </button>
 
           {!origin && (
-            <p className="text-sm text-rose-600" role="status">{locationErrorMessage ?? 'Waiting for your current location.'}</p>
+            <p className="status-message status-error" role="status">{locationErrorMessage ?? 'Waiting for your current location.'}</p>
           )}
-          {errorMessage && <p className="text-sm font-medium text-rose-600" role="alert">{errorMessage}</p>}
         </form>
-      </section>
+      </details>
+  );
 
+  return (
+    <div className="commute-panel flex w-full flex-col gap-4">
+      {errorMessage && <StatusMessage message={errorMessage} />}
       {plan && (
-        <section className="rounded-2xl border border-white/70 bg-white/95 p-5 shadow-lg backdrop-blur" aria-labelledby="active-route-heading">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Saved in this browser</p>
-              <h3 id="active-route-heading" className="mt-1 text-xl font-semibold text-slate-900">Route to {plan.destination.name}</h3>
-              <p className="mt-1 text-sm text-slate-500">{formatMiles(plan.totalDistanceMeters)} · {formatDuration(plan.totalDurationSeconds)} · {gasStopCount} gas stop{gasStopCount === 1 ? '' : 's'}</p>
+        <section className="saved-plan surface p-4" aria-labelledby="active-route-heading">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Saved in this browser for up to 7 days</p>
+              <h3 id="active-route-heading" className="mt-1 text-lg font-semibold break-words">{plan.destination.name}</h3>
             </div>
             <button
               type="button"
@@ -428,50 +401,58 @@ export const CommutePanel = ({
                 clearPlan();
                 setErrorMessage(null);
               }}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-rose-50 hover:text-rose-700"
+              className="action-quiet shrink-0"
+              aria-label="Clear saved commute plan"
             >
               <Trash2 aria-hidden="true" size={16} /> Clear
             </button>
           </div>
+          <dl className="mt-4 grid grid-cols-3 gap-2 border-y py-3 text-sm tabular-nums">
+            <div><dt className="text-xs text-muted-foreground">Distance</dt><dd className="mt-1 font-semibold">{formatMiles(plan.totalDistanceMeters)}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Drive time</dt><dd className="mt-1 font-semibold">{formatDuration(plan.totalDurationSeconds)}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">Fuel stops</dt><dd className="mt-1 font-semibold">{gasStopCount}</dd></div>
+          </dl>
+          <p className="mt-3 text-xs text-muted-foreground">Last entered range: <span className="font-semibold tabular-nums">{plan.currentRangeMiles} mi</span></p>
 
           {plan.status === 'completed' ? (
-            <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+            <div className="mt-4 rounded-lg bg-green-50 p-3 text-green-900" role="status">
               <p className="font-semibold">Destination reached</p>
               <p className="mt-1 text-sm">This completed route remains saved until you clear or replace it.</p>
             </div>
           ) : plan.status === 'awaiting_range' ? (
-            <form onSubmit={handleArrivalRange} className="mt-5 rounded-xl border border-orange-200 bg-orange-50 p-4">
-              <div className="flex items-start gap-3">
-                <Fuel aria-hidden="true" className="mt-0.5 text-orange-600" size={20} />
-                <div className="flex-1">
-                  <h4 className="font-semibold text-orange-950">You are near {nextStop?.name}</h4>
-                  <p className="mt-1 text-sm text-orange-900">Enter the car&apos;s updated estimated range before continuing.</p>
+            <form onSubmit={handleArrivalRange} className="status-message status-warning mt-4">
+              <div className="flex items-start gap-2">
+                <Fuel aria-hidden="true" className="mt-0.5 shrink-0" size={18} />
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-semibold break-words">You are near {nextStop?.name}</h4>
+                  <p className="mt-1 text-sm">Enter your updated range before continuing.</p>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                     <label htmlFor="arrival-range" className="sr-only">Updated estimated range in miles</label>
                     <input
                       id="arrival-range"
                       type="number"
+                      inputMode="decimal"
                       min="6"
                       max="1000"
                       step="1"
                       value={arrivalRange}
                       onChange={(event) => setArrivalRange(event.target.value)}
                       placeholder="Updated miles"
-                      className="min-w-0 flex-1 rounded-lg border border-orange-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:ring-4 focus:ring-orange-100"
+                      className="form-input flex-1"
                       required
                     />
-                    <button type="submit" className="rounded-lg bg-orange-600 px-4 py-2.5 font-semibold text-white hover:bg-orange-700">Continue</button>
+                    <button type="submit" className="action-primary">Continue</button>
                   </div>
                 </div>
               </div>
             </form>
           ) : nextStop && (
-            <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-blue-600">Next {nextStop.type === 'gas' ? `stop ${plan.currentStopIndex + 1}` : 'destination'}</p>
-              <p className="mt-1 font-semibold text-slate-900">{nextStop.name}</p>
-              <p className="mt-1 text-sm text-slate-600">{nextStop.address}</p>
+            <div className="next-stop mt-4">
+              <p className="text-xs font-semibold text-primary">Next {nextStop.type === 'gas' ? `stop ${plan.currentStopIndex + 1}` : 'destination'}</p>
+              <p className="mt-1 font-semibold break-words">{nextStop.name}</p>
+              <p className="mt-1 text-sm text-muted-foreground break-words">{nextStop.address}</p>
               {nextStop.pricePerGallon !== undefined && (
-                <p className="mt-2 text-sm font-bold text-emerald-700">${nextStop.pricePerGallon.toFixed(2)}/gal</p>
+                <p className="mt-2 text-sm font-bold text-green-800 tabular-nums">${nextStop.pricePerGallon.toFixed(2)}/gal</p>
               )}
               <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                 <a
@@ -482,32 +463,35 @@ export const CommutePanel = ({
                     event.preventDefault();
                     openPreferredDirections(nextStop);
                   }}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="action-primary flex-1"
                 >
-                  <Navigation aria-hidden="true" size={17} /> Open Next Stop in Maps
+                  <Navigation aria-hidden="true" size={18} /> Open next stop in Maps
                 </a>
-                <button type="button" onClick={onViewMap} className="rounded-lg bg-white px-4 py-3 text-sm font-semibold text-blue-700 ring-1 ring-blue-200 hover:bg-blue-50">View Full Route</button>
+                <button type="button" onClick={onViewMap} className="action-secondary">View route</button>
               </div>
             </div>
           )}
 
-          <ol className="mt-5 space-y-3">
+          <h4 className="mt-5 text-sm font-semibold">Your stops</h4>
+          <ol className="mt-1">
             {plan.stops.map((stop, index) => (
-              <li key={stop.id} className={`flex gap-3 rounded-xl border p-4 ${index === plan.currentStopIndex && plan.status !== 'completed' ? 'border-blue-300 bg-blue-50/60' : 'border-slate-200 bg-slate-50'}`}>
-                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${stop.type === 'gas' ? 'bg-orange-500' : 'bg-blue-600'}`}>
-                  {stop.type === 'gas' ? index + 1 : <MapPin aria-hidden="true" size={16} />}
+              <li key={stop.id} className="stop-row" data-state={plan.status === 'completed' || index < plan.currentStopIndex ? 'completed' : index === plan.currentStopIndex ? 'current' : 'upcoming'} aria-current={plan.status !== 'completed' && index === plan.currentStopIndex ? 'step' : undefined}>
+                <span className="stop-number" aria-hidden="true">
+                  {plan.status === 'completed' || index < plan.currentStopIndex ? <Check size={15} /> : stop.type === 'gas' ? index + 1 : <MapPin size={15} />}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-slate-900">{stop.name}</p>
-                  <p className="truncate text-sm text-slate-500">{stop.address}</p>
-                  {plan.legs[index] && <p className="mt-1 text-xs font-medium text-slate-500">{formatMiles(plan.legs[index].distanceMeters)} from previous point</p>}
+                  <h4 className="text-sm font-semibold break-words">{stop.name}</h4>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{plan.status === 'completed' || index < plan.currentStopIndex ? 'Completed' : index === plan.currentStopIndex ? plan.status === 'awaiting_range' ? 'Update range to continue' : 'Current stop' : 'Upcoming'}</p>
+                  <p className="mt-1 text-xs text-muted-foreground break-words">{stop.address}</p>
+                  {plan.legs[index] && <p className="mt-1 text-xs text-muted-foreground">{formatMiles(plan.legs[index].distanceMeters)} from previous point</p>}
                 </div>
-                {stop.pricePerGallon !== undefined && <span className="shrink-0 font-bold text-emerald-700">${stop.pricePerGallon.toFixed(2)}</span>}
+                {stop.pricePerGallon !== undefined && <span className="text-sm font-bold text-green-800 tabular-nums">${stop.pricePerGallon.toFixed(2)}<span className="block text-right text-xs font-normal text-muted-foreground">/gal</span></span>}
               </li>
             ))}
           </ol>
         </section>
       )}
+      {planningForm}
     </div>
   );
 };

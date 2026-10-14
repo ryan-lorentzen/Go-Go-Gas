@@ -1,369 +1,170 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
+@import "leaflet/dist/leaflet.css";
+@import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --font-heading: var(--font-sans);
-
-  /* Custom Colors */
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  --color-secondary-foreground: var(--foreground);
+  --color-muted: var(--secondary);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--secondary);
+  --color-accent-foreground: var(--foreground);
   --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  --color-input: var(--border);
+  --color-ring: var(--primary);
+  --color-destructive: var(--error);
+  --font-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 :root {
-  --primary: 174 72% 38%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 222 89% 58%;
-  --secondary-foreground: 0 0% 100%;
-  --accent: 28 92% 60%;
-  --accent-foreground: 220 30% 14%;
-
-  --background: 0 0% 0%;
-  --foreground: 220 20% 17%;
-  --border: 214 32% 90%;
-  --input: 214 32% 90%;
-  --ring: 174 72% 38%;
-
-  /* Default shadcn/ui radius, keep if needed */
-  --radius: 0.625rem;
-
-  --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "Consolas", "SFMono-Regular", "Liberation Mono", monospace;
-  --font-display: "Avenir Next", "Segoe UI Variable Display", "Trebuchet MS", "Gill Sans", "Segoe UI", sans-serif;
-}
-
-.dark {
-  --primary: 174 72% 52%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 222 89% 66%;
-  --secondary-foreground: 0 0% 100%;
-  --accent: 28 92% 63%;
-  --accent-foreground: 220 30% 10%;
-
-  --background: 222 25% 10%;
-  --foreground: 220 20% 92%;
-  --border: 222 22% 20%;
-  --input: 222 22% 20%;
-  --ring: 174 72% 52%;
+  color-scheme: light;
+  --background: #f3f6f8;
+  --foreground: #182b38;
+  --primary: #225bc4;
+  --primary-foreground: #fff;
+  --secondary: #edf2f7;
+  --muted-foreground: #5a6b78;
+  --border: #dce3e9;
+  --positive: #28704f;
+  --warning: #925006;
+  --error: #b42332;
+  --radius: 0.5rem;
+  --nav-height: calc(60px + env(safe-area-inset-bottom, 0px));
+  --header-height: calc(56px + env(safe-area-inset-top, 0px));
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
+  * { border-color: var(--border); }
+  html { font-family: var(--font-sans); }
+  body { margin: 0; background: var(--background); color: var(--foreground); }
+  button, a, input, select, summary { -webkit-tap-highlight-color: transparent; }
+  button, summary { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  :where(button, a, input, select, summary):focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
   }
-  body {
-    @apply relative min-h-screen bg-background text-foreground;
-    isolation: isolate;
+  input, select { font-size: 16px; }
+  input { scroll-margin-block: 90px; }
+  summary { list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+}
+
+@layer components {
+  .app-shell { min-height: 100dvh; padding-bottom: var(--nav-height); }
+  .app-header {
+    height: var(--header-height); padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+    display: flex; align-items: center; border-bottom: 1px solid var(--border); background: white;
   }
-  body::before {
-    content: "";
-    position: fixed;
-    inset: -20%;
-    z-index: -1;
-    pointer-events: none;
-    background:
-      radial-gradient(circle at 15% 20%, hsl(var(--primary) / 0.28), transparent 38%),
-      radial-gradient(circle at 85% 15%, hsl(var(--secondary) / 0.24), transparent 36%),
-      radial-gradient(circle at 50% 85%, hsl(var(--accent) / 0.22), transparent 34%),
-      linear-gradient(180deg, hsl(var(--background)), hsl(var(--background)));
-    background-repeat: no-repeat;
-    background-size: cover;
-    filter: saturate(110%);
+  .page-content { width: 100%; max-width: 720px; margin: auto; padding: 20px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left)); }
+  .page-heading { width: 100%; margin-bottom: 16px; }
+  .page-heading h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.025em; }
+  .page-heading p { font-size: 13px; margin-top: 3px; color: var(--muted-foreground); }
+  .surface { background: white; border: 1px solid var(--border); border-radius: 12px; }
+  .field-label { font-size: 13px; font-weight: 600; }
+  .form-input { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; background: white; color: var(--foreground); border: 1px solid #b8c5cf; border-radius: 8px; }
+  .fuel-segments { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 3px; border-radius: 9px; background: var(--secondary); gap: 2px; }
+  .fuel-segments button { min-width: 0; min-height: 44px; font-size: 12px; font-weight: 600; border-radius: 6px; color: var(--muted-foreground); }
+  .fuel-segments button[aria-pressed="true"] { background: white; color: var(--primary); box-shadow: 0 1px 3px #182b3814; }
+  .action-primary, .action-secondary, .action-quiet {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+    padding: 10px 12px; font-size: 14px; line-height: 1.35; font-weight: 600; border-radius: 8px; text-align: center; touch-action: manipulation;
   }
-  html {
-    @apply font-sans;
-  }
-
-  button {
-    @apply cursor-pointer shadow-sm transition-[transform,box-shadow,background-color,opacity] duration-200 ease-out;
-  }
-
-  button:hover {
-    @apply shadow-md;
-  }
-
-  button:active {
-    transform: translateY(1px);
-  }
-}
-
-.leaflet-routing-container {
-  background-color: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.leaflet-popup-content-wrapper {
-  padding-right: 0.25rem;
-}
-
-.leaflet-container a.leaflet-popup-close-button {
-  top: 8px;
-  right: 8px;
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(15, 23, 42, 0.28);
-  color: rgb(15, 23, 42);
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 36px;
-  text-align: center;
-  box-shadow: 0 10px 22px -18px rgba(15, 23, 42, 0.45);
-  touch-action: manipulation;
-}
-
-.leaflet-container a.leaflet-popup-close-button:hover {
-  background: #ef4444;
-  border-color: #dc2626;
-  color: white;
-}
-
-.leaflet-routing-collapse-btn:hover {
-  background: #ef4444;
-  border-color: #dc2626;
-  color: white;
-}
-
-.leaflet-control-container .leaflet-routing-container-hide {
-  width: 44px;
-  height: 44px;
-}
-
-.leaflet-control-container .leaflet-routing-container-hide .leaflet-routing-alt,
-.leaflet-control-container .leaflet-routing-container-hide .leaflet-routing-geocoders {
-  display: none;
-}
-
-.leaflet-routing-collapse-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  width: 38px;
-  height: 38px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(15, 23, 42, 0.28);
-  color: rgb(15, 23, 42);
-  font-size: 26px;
-  font-weight: 700;
-  line-height: 1;
-  box-shadow: 0 10px 22px -18px rgba(15, 23, 42, 0.45);
-  touch-action: manipulation;
-}
-
-.leaflet-routing-collapse-btn:after {
-  content: '×';
-}
-
-.leaflet-routing-container-hide .leaflet-routing-collapse-btn {
-  position: relative;
-  left: 4px;
-  top: 4px;
-  display: block;
-  width: 26px;
-  height: 23px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid hsl(var(--primary) / 0.45);
-  box-shadow: 0 12px 24px -16px rgba(15, 23, 42, 0.4);
-}
-
-.leaflet-routing-container-hide .leaflet-routing-collapse-btn:after {
-  content: '+';
-  position: relative;
-  top: -3px;
-  left: 1px;
-  color: hsl(var(--primary));
-  font-size: 16px;
-}
-
-.leaflet-routing-container h2,
-.leaflet-routing-container h3,
-.leaflet-routing-container .leaflet-routing-alt,
-.leaflet-routing-container .leaflet-routing-instructions {
-  color: hsl(var(--foreground));
-}
-
-.red-marker-icon {
-  filter: hue-rotate(240deg) saturate(200%) brightness(70%); /* Adjust to get a red shade */
-}
-
-.gas-price-marker {
-  background: transparent;
-  border: none;
-}
-
-.gas-price-marker .gas-price-marker__wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  transform: translateY(-2px);
-  pointer-events: none;
-}
-
-.gas-price-marker .gas-price-marker__price {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  min-width: 52px;
-  padding: 4px 8px;
-  border-radius: 9999px;
-  background: rgba(15, 23, 42, 0.94);
-  color: hsl(var(--primary-foreground));
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.85);
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.gas-price-marker .gas-price-marker__count {
-  position: absolute;
-  top: -7px;
-  right: -14px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 9999px;
-  background: #ef4444;
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.92);
-  box-shadow: 0 8px 18px -12px rgba(15, 23, 42, 0.8);
-  font-size: 0.65rem;
-  font-weight: 800;
-  line-height: 1;
-}
-
-.gas-price-marker .gas-price-marker__pin {
-  width: 14px;
-  height: 14px;
-  border-radius: 9999px;
-  background: #ef4444;
-  border: 2px solid white;
-  box-shadow: 0 8px 16px -10px rgba(15, 23, 42, 0.9);
-}
-
-.leaflet-routing-collapse-btn:after {
-  content: '\00d7';
-}
-
-.leaflet-routing-container-hide .leaflet-routing-collapse-btn {
-  left: 3px;
-  top: 3px;
-  background: hsl(var(--primary));
-  box-shadow: 0 12px 24px -12px rgba(15, 23, 42, 0.65);
-}
-
-.leaflet-routing-container-hide .leaflet-routing-collapse-btn:after {
-  content: '+';
-  color: hsl(var(--primary-foreground));
-  font-size: 20px;
-}
-
-.brand-title {
-  font-family: var(--font-display);
-  letter-spacing: 0.02em;
-  text-shadow: 0 4px 14px rgba(13, 148, 136, 0.14);
-}
-
-.commute-stop-marker {
-  background: transparent;
-  border: 0;
-}
-
-.commute-stop-marker__pin {
-  display: flex;
-  width: 36px;
-  height: 36px;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid white;
-  border-radius: 9999px;
-  background: #f97316;
-  color: white;
-  box-shadow: 0 10px 24px -10px rgba(15, 23, 42, 0.8);
-  font-size: 0.8rem;
-  font-weight: 800;
-}
-
-.commute-stop-marker__pin--current {
-  box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.28), 0 10px 24px -10px rgba(15, 23, 42, 0.8);
-}
-
-.commute-stop-marker__pin--destination {
-  background: #2563eb;
-}
-
-.location-fetching-dots {
-  display: inline-flex;
-  width: 1.5em;
-}
-
-.location-fetching-dots span {
-  animation: location-fetching-dot 1.2s infinite;
-  opacity: 0.2;
-}
-
-.location-fetching-dots span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.location-fetching-dots span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes location-fetching-dot {
-  0%, 75%, 100% {
-    opacity: 0.2;
-  }
-
-  25%, 50% {
-    opacity: 1;
+  .action-primary { background: var(--primary); color: white; }
+  .action-primary:hover:not(:disabled) { background: #194ba7; }
+  .action-secondary { background: white; border: 1px solid var(--border); color: var(--primary); }
+  .action-secondary:hover, .action-quiet:hover { background: var(--secondary); }
+  .action-primary:disabled, .action-secondary:disabled { opacity: 0.55; }
+  .action-quiet { font-size: 12px; padding-inline: 8px; }
+  .price-value { font-size: 22px; line-height: 1.15; font-weight: 700; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; color: var(--positive); }
+  .station-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 14px 16px; }
+  .status-message { font-size: 13px; line-height: 1.5; padding: 10px 12px; border-radius: 8px; background: var(--secondary); }
+  .status-error { color: var(--error); background: #fff0f1; }
+  .status-warning { color: var(--warning); background: #fff6e8; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 32px 16px; text-align: center; color: var(--muted-foreground); }
+  .empty-state p { font-size: 14px; font-weight: 600; color: var(--foreground); }
+  .empty-state span { max-width: 32ch; font-size: 13px; }
+  .primary-nav { position: fixed; z-index: 1100; bottom: 0; inset-inline: 0; height: var(--nav-height); background: white; border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .nav-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 600px; margin: auto; padding-inline: max(8px, env(safe-area-inset-left)); }
+  .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 59px; font-size: 11px; font-weight: 600; color: var(--muted-foreground); position: relative; }
+  .nav-item[aria-current="page"] { color: var(--primary); }
+  .nav-item[aria-current="page"]::before { content: ""; position: absolute; top: 0; width: 28px; height: 3px; border-radius: 0 0 3px 3px; background: var(--primary); }
+  .map-content { width: 100%; }
+  .map-workspace { width: 100%; }
+  .map-canvas { height: calc(100svh - var(--header-height) - var(--nav-height) - 100px); min-height: 280px; width: 100%; position: relative; z-index: 0; background: var(--secondary); }
+  .map-workspace[data-selected="true"] .map-canvas { height: max(280px, 45svh); }
+  .map-panel { background: white; min-width: 0; }
+  .map-legend { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 8px 12px; font-size: 11px; color: var(--muted-foreground); border-bottom: 1px solid var(--border); }
+  .map-legend span { display: flex; align-items: center; gap: 6px; }
+  .location-dot, .station-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--positive); }
+  .station-dot { background: var(--primary); }
+  .map-settings summary, .station-details summary, .planner-section summary { min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 12px 16px; font-size: 13px; font-weight: 600; }
+  .station-details { border-top: 1px solid var(--border); }
+  .station-details summary { justify-content: space-between; }
+  details[open] > summary > svg:last-child { transform: rotate(180deg); }
+  .range-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .range-fields label { display: block; min-height: 38px; }
+  .stop-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; padding-block: 14px; border-bottom: 1px solid var(--border); }
+  .stop-row:last-child { border-bottom: 0; }
+  .stop-number { display: flex; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 50%; background: var(--secondary); color: var(--muted-foreground); font-size: 12px; font-weight: 600; }
+  .stop-row[data-state="current"] .stop-number { background: var(--primary); color: white; }
+  .stop-row[data-state="completed"] .stop-number { background: #eaf4ee; color: var(--positive); }
+  .stop-row[data-state="current"] h4 { color: var(--primary); }
+  .next-stop { border-left: 3px solid var(--primary); background: #f0f5ff; border-radius: 0 8px 8px 0; padding: 14px; }
+  @media (min-width: 768px) {
+    :root { --nav-height: 0px; }
+    .app-header { padding-inline: 24px; }
+    .primary-nav { position: absolute; top: env(safe-area-inset-top, 0px); right: 24px; left: auto; bottom: auto; width: 410px; height: 56px; border: 0; padding: 0; }
+    .nav-items { padding: 0; }
+    .nav-item { flex-direction: row; height: 56px; font-size: 13px; gap: 8px; }
+    .nav-item[aria-current="page"]::before { top: auto; bottom: 0; width: 36px; border-radius: 3px 3px 0 0; }
+    .page-content { padding-top: 28px; }
+    .fuel-segments button { font-size: 13px; }
+    .range-fields label { min-height: auto; }
+    .map-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
+    .map-canvas { height: calc(100dvh - var(--header-height)); min-height: 400px; }
+    .map-workspace[data-selected="true"] .map-canvas { height: calc(100dvh - var(--header-height)); }
+    .map-panel { border-left: 1px solid var(--border); max-height: calc(100dvh - var(--header-height)); overflow-y: auto; }
   }
 }
 
+/* Leaflet owns these elements; keep overrides scoped to its controls. */
+.leaflet-container { font-family: var(--font-sans); }
+.leaflet-top.leaflet-right:has(.leaflet-routing-container) { top: auto; bottom: 36px; z-index: 650; }
+.leaflet-popup-content-wrapper { border-radius: 10px; color: var(--foreground); padding-right: 4px; }
+.leaflet-popup-content { margin: 16px 20px 16px 16px; max-width: min(240px, calc(100vw - 100px)); }
+.leaflet-popup-content p { margin: 8px 0; }
+.leaflet-container a.leaflet-popup-close-button { top: 3px; right: 3px; width: 44px; height: 44px; line-height: 44px; font-size: 24px; color: var(--foreground); }
+.leaflet-popup-content h3 { padding-right: 24px; font-size: 15px; }
+.leaflet-container a.action-primary { color: white; }
+.leaflet-bar a { min-width: 44px; min-height: 44px; line-height: 44px; color: var(--foreground); }
+.leaflet-control-container .leaflet-routing-container { background: white; color: var(--foreground); border-radius: 8px; box-shadow: 0 2px 8px #182b381a; width: min(300px, calc(100vw - 78px)); height: auto; max-height: 40vh; overflow-y: auto; padding: 44px 8px 8px; }
+.leaflet-routing-container h2, .leaflet-routing-container h3, .leaflet-routing-alt { color: var(--foreground); }
+.leaflet-routing-collapse-btn { position: absolute; top: 0; right: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: white; color: var(--foreground); font-size: 24px; border-radius: 8px; }
+.leaflet-routing-collapse-btn::after { content: '\00d7'; }
+.leaflet-control-container .leaflet-routing-container-hide { width: 44px; height: 44px; padding: 0; overflow: hidden; }
+.leaflet-routing-container-hide .leaflet-routing-collapse-btn { position: static; display: flex; width: 44px; height: 44px; background-image: none; }
+.leaflet-routing-container-hide .leaflet-routing-alt, .leaflet-routing-container-hide .leaflet-routing-geocoders { display: none; }
+.leaflet-routing-container-hide .leaflet-routing-collapse-btn::after { content: '+'; color: var(--primary); }
+.gas-price-marker, .commute-stop-marker { background: transparent; border: 0; }
+.gas-price-marker__wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; transform: translateY(-2px); pointer-events: none; }
+.gas-price-marker__price { display: inline-flex; align-items: center; justify-content: center; position: relative; min-width: 52px; padding: 4px 8px; border-radius: 6px; background: var(--foreground); color: white; border: 1px solid white; box-shadow: 0 1px 4px #182b3833; font-size: 12px; font-weight: 700; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.gas-price-marker__count { position: absolute; top: -7px; right: -14px; min-width: 22px; height: 18px; padding: 2px 5px; border-radius: 9px; background: var(--primary); border: 1px solid white; font-size: 10px; line-height: 12px; }
+.gas-price-marker__pin { width: 14px; height: 14px; border-radius: 50%; background: var(--primary); border: 2px solid white; }
+.commute-stop-marker__pin { display: flex; width: 36px; height: 36px; align-items: center; justify-content: center; border: 3px solid white; border-radius: 50%; background: var(--positive); color: white; box-shadow: 0 1px 4px #182b3833; font-size: 13px; font-weight: 700; }
+.commute-stop-marker__pin--current { outline: 3px solid var(--primary); outline-offset: 2px; }
+.commute-stop-marker__pin--destination { background: var(--primary); }
 @media (prefers-reduced-motion: reduce) {
-  .location-fetching-dots span {
-    animation: none;
-    opacity: 1;
-  }
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
-
-@media (max-width: 768px) {
-  .leaflet-container a.leaflet-popup-close-button,
-  .leaflet-routing-collapse-btn {
-    width: 42px;
-    height: 42px;
-    font-size: 28px;
-    line-height: 40px;
-  }
-
-  .leaflet-control-container .leaflet-routing-container-hide {
-    width: 48px;
-    height: 48px;
-  }
+@media (max-width: 640px) {
+  .leaflet-control-container .leaflet-routing-container { height: auto; padding: 44px 8px 8px !important; }
+  .leaflet-control-container .leaflet-routing-container-hide { height: 44px; padding: 0 !important; }
 }
