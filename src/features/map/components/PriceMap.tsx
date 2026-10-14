@@ -3,8 +3,6 @@
 import { CommutePlan, CommuteStop, GasStation } from '@/types';
 import { useLocationStore } from '@/store/useLocationStore';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import L from 'leaflet';
 import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import RoutingMachine from "./routing-machine";
@@ -216,11 +214,12 @@ const GasPriceClusterLayer = ({ gasStations, onGasStationClick, selectedGasStati
         >
           <Popup>
             <div className="font-sans text-foreground">
-              <h3 className="text-lg font-semibold">{station.name}</h3>
-              <p>{station.address}</p>
-              <p>Price: ${station.pricePerGallon.toFixed(2)}/gal{station.fuelType ? ` (${formatFuelType(station.fuelType)})` : ''}</p>
+              <h3 className="font-semibold">{station.name}</h3>
+              <p className="text-xs text-muted-foreground">{station.address}</p>
+              <p className="text-sm font-semibold text-green-800 tabular-nums">${station.pricePerGallon.toFixed(2)}/gal</p>
+              {station.fuelType && <p className="text-xs text-muted-foreground">{formatFuelType(station.fuelType)}</p>}
               {station.priceUpdatedAt && (
-                <p>Updated: {formatUpdatedTime(station.priceUpdatedAt)}</p>
+                <p className="text-xs text-muted-foreground">Updated {formatUpdatedTime(station.priceUpdatedAt)}</p>
               )}
               <a
                 href={getWebDirectionsUrl(station)}
@@ -230,7 +229,7 @@ const GasPriceClusterLayer = ({ gasStations, onGasStationClick, selectedGasStati
                   event.preventDefault();
                   openPreferredDirections(station);
                 }}
-                className="mt-3 inline-flex rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-800 ring-1 ring-slate-200 transition-colors duration-200 hover:bg-slate-200"
+                className="action-primary mt-2 w-full"
               >
                 Open in Maps
               </a>
@@ -251,8 +250,13 @@ const MapSizeUpdater = ({ isVisible }: { isVisible: boolean }) => {
     }
 
     const animationFrame = window.requestAnimationFrame(() => map.invalidateSize());
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
 
-    return () => window.cancelAnimationFrame(animationFrame);
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      observer.disconnect();
+    };
   }, [isVisible, map]);
 
   return null;
@@ -325,12 +329,12 @@ const CommuteRouteView = ({ plan, isVisible }: { plan: CommutePlan; isVisible: b
         >
           <Popup>
             <div className="font-sans text-foreground">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-600">
+              <p className="text-xs font-semibold text-primary">
                 {stop.type === 'gas' ? `Stop ${index + 1}` : 'Destination'}
               </p>
-              <h3 className="mt-1 text-lg font-semibold">{stop.name}</h3>
-              <p>{stop.address}</p>
-              {stop.pricePerGallon !== undefined && <p className="mt-1 font-semibold text-emerald-700">${stop.pricePerGallon.toFixed(2)}/gal</p>}
+              <h3 className="mt-1 font-semibold">{stop.name}</h3>
+              <p className="text-xs text-muted-foreground">{stop.address}</p>
+              {stop.pricePerGallon !== undefined && <p className="mt-1 font-semibold text-green-800 tabular-nums">${stop.pricePerGallon.toFixed(2)}/gal</p>}
               <a
                 href={getWebDirectionsUrl(stop)}
                 target="_blank"
@@ -339,7 +343,7 @@ const CommuteRouteView = ({ plan, isVisible }: { plan: CommutePlan; isVisible: b
                   event.preventDefault();
                   openPreferredDirections(stop);
                 }}
-                className="mt-3 inline-flex rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                className="action-primary mt-2 w-full"
               >
                 Open in Maps
               </a>
