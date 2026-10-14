@@ -85,6 +85,8 @@ Do not commit `.env*` files or API keys. The frontend `.gitignore` excludes them
 
 ## Change Verification
 
+Keep `README.md` accurate as the product and development workflow evolve. Whenever a change adds, removes, or materially changes a user-facing feature, integration, setup/configuration requirement, command, or deployment behavior, update the relevant README section in the same change. Do not document planned or unsupported behavior as current functionality. Periodically check that README feature descriptions and commands still match the implementation and `package.json` scripts.
+
 Before completing frontend changes:
 
 1. Run `npm run lint`.
