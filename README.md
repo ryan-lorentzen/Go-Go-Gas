@@ -1,45 +1,91 @@
 # Go Go Gas!
 
-Go Go Gas! finds nearby gas stations with live fuel-grade prices and plans fuel stops along longer US driving routes.
+Go Go Gas! is a browser-based gas station finder and fuel-aware road-trip planner. Find nearby stations with live fuel prices, compare them on a map, or plan a longer drive with fuel stops based on your vehicle's estimated range.
 
-## Development
+## Features
+
+### Nearby gas stations
+
+- Uses browser geolocation to search around your current location.
+- Finds stations with live prices through Google Places (New).
+- Filter results by fuel grade (regular, midgrade, premium, or diesel) and search radius.
+- Rank stations by score, price, or distance.
+- Browse station prices and locations on an interactive Leaflet map; select a station to inspect it and route to it.
+- Handles denied location access, missing configuration, empty results, and changing searches with user-facing status messages.
+
+### Fuel-smart commute planning
+
+- Search and select a destination using Google Places address autocomplete.
+- Plan a road route from your current location using your current and full-tank ranges and preferred fuel grade.
+- Suggest gas stops along the route and show stop order, prices when available, and leg distances.
+- View the route on the map or open the next stop in a preferred maps app.
+- Track progress stop by stop: enter your updated range before continuing, with a safety check for the next leg.
+- Save one active plan in browser storage for up to seven days. Reloading restores the plan without repeating the planning requests; clear it manually, especially on shared devices.
+- Uses OSRM road routing. Commute planning reports an error if routing is unavailable rather than substituting straight-line estimates. Browser location tracking only works while the site is open.
+
+## Tech stack
+
+- **Next.js 15** (App Router) and **React 19** with TypeScript
+- **Tailwind CSS 4** for responsive styling
+- **Leaflet** and **React Leaflet** for client-only maps and route display
+- **Zustand** for location and commute-plan state
+- **Google Places API (New)** for gas-station search, destination autocomplete, and place details
+- **OSRM-compatible routing service** for road directions and commute planning
+
+## Getting started
+
+Requirements: Node.js and npm.
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
-Open `http://localhost:3000` and allow location access to search nearby stations.
+Open [http://localhost:3000](http://localhost:3000) and allow location access to find nearby stations or plan a route. Stop the development server with Ctrl+C.
 
-Live station searches and destination autocomplete require a server-side `GOOGLE_PLACES_API_KEY` in `.env.local`:
+## Configuration
 
-```bash
+Create a local `.env.local` file in the repository root for live Google Places features:
+
+```dotenv
 GOOGLE_PLACES_API_KEY=your-key
 ```
 
-Enable **Places API (New)** for that key. Destination suggestions use Autocomplete (New) and resolve selections through Place Details (New). The key remains server-side and autocomplete requests are grouped with session tokens.
+Enable **Places API (New)** for the key. Station search uses the server-side `/api/gas-prices` route; destination suggestions and selection use Autocomplete (New) and Place Details (New). Autocomplete requests are grouped with session tokens. The key stays on the server and must not be exposed in browser code or committed to source control.
 
-Commute planning uses OSRM for road routes. Its endpoint is configurable:
+Commute planning uses OSRM. The endpoint can be configured as:
 
-```bash
+```dotenv
 OSRM_BASE_URL=https://router.project-osrm.org
 ```
 
-The default public OSRM endpoint is a best-effort service. Configure a managed or self-hosted OSRM-compatible endpoint before relying on Commute planning in production. Commute planning fails safely instead of using straight-line estimates when OSRM is unavailable.
+The public OSRM endpoint is best-effort. Configure a managed or self-hosted OSRM-compatible service for production reliability. If routing is unavailable, commute planning fails safely.
 
-One completed active commute plan is saved in browser storage for up to seven days. Reloading the page restores its route and stops without repeating planning API requests. Browser geolocation tracking works only while the site is open. Clear the plan after a trip when using a shared device.
-
-## Verification
+## Commands
 
 ```bash
-npm run lint
-npm run build
+npm ci          # install the exact dependencies from package-lock.json
+npm run dev     # start the local development server
+npm run lint    # run ESLint
+npm run build   # create a production build
+npm run start   # serve the production build (run build first)
 ```
 
-Leaflet maps and browser geolocation are client-only. Route estimates use OSRM with a straight-line fallback when routing is unavailable.
+There is currently no unit-test script. Validate changes with lint, build, and relevant browser checks.
+
+## Project structure
+
+- `src/app/` — App Router page, layout, styles, and API routes
+- `src/app/page.tsx` — gas finder page and client-side app orchestration
+- `src/app/api/` — server-side gas search, geocoding, and commute-planning endpoints
+- `src/features/map/` — Leaflet map, markers, and route display
+- `src/features/commute/` — commute planning and progress UI
+- `src/GasPrices/` and `src/Commute/` — Google Places and commute API clients
+- `src/lib/` — shared route, map-link, and server routing utilities
+- `src/store/` — Zustand location and commute-plan stores
+- `src/types/` — shared domain types
+- `public/images/leaflet/` — Leaflet marker assets
 
 ## Deployment
 
-Deploy on Vercel as a Next.js project. Use the repository root as the Vercel Root Directory, `npm ci` as the install command, and `npm run build` as the build command.
-
-Add `GOOGLE_PLACES_API_KEY` in Vercel Project Settings > Environment Variables for Production, Preview, and Development. Keep the key server-side; browser code only calls this application's API routes.
+Deploy as a Next.js project from the repository root (for example, on Vercel). Use `npm ci` for installation and `npm run build` for the build command. Configure `GOOGLE_PLACES_API_KEY` and, if needed, `OSRM_BASE_URL` in the hosting provider's environment settings for each target environment. Do not commit `.env` files, API keys, or generated build output.
