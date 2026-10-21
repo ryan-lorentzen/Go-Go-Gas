@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CommutePanel } from '@/features/commute/components/CommutePanel';
 import { FuelGradeControl } from '@/components/FuelGradeControl';
 import { StatusMessage } from '@/components/StatusMessage';
+import { USER_LOCATION_ICON_URL } from '@/features/map/user-location-icon';
 import { getWebDirectionsUrl, openPreferredDirections } from '@/lib/mapLinks';
 import { buildTripPlan } from '@/features/map/components/routing-engine';
 import { COMMUTE_ARRIVAL_RADIUS_METERS, getNextCommuteStop } from '@/lib/commute';
@@ -729,7 +730,7 @@ export default function Home() {
             </div>
 
             <aside className="map-panel" aria-label="Map details and settings">
-            <div className="map-legend"><span><i className="location-dot" />Your location</span><span><i className="station-dot" />Gas station</span></div>
+            <div className="map-legend"><span><Image src={USER_LOCATION_ICON_URL} alt="" width={15} height={25} unoptimized />Your location</span><span><i className="station-dot" />Gas station</span></div>
             {commuteMapPlan && (
               <div className="space-y-3 p-4">
                 <p className="text-xs text-muted-foreground">Saved commute route</p>

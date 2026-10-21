@@ -1,7 +1,7 @@
 'use client';
 
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, Fuel, LoaderCircle, MapPin, Navigation, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, Fuel, LoaderCircle, MapPin, Navigation, SkipForward, Trash2 } from 'lucide-react';
 import { FuelGradeControl } from '@/components/FuelGradeControl';
 import { StatusMessage } from '@/components/StatusMessage';
 
@@ -44,7 +44,7 @@ export const CommutePanel = ({
   onPlanReady,
   onViewMap,
 }: CommutePanelProps) => {
-  const { plan, hasHydrated, setPlan, clearPlan, acceptRangeAndAdvance } = useCommuteStore();
+  const { plan, hasHydrated, setPlan, clearPlan, acceptRangeAndAdvance, skipCurrentStop } = useCommuteStore();
   const [address, setAddress] = useState('');
   const [currentRange, setCurrentRange] = useState('');
   const [fullTankRange, setFullTankRange] = useState('');
@@ -58,11 +58,31 @@ export const CommutePanel = ({
   const [isPlanning, setIsPlanning] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [arrivalRange, setArrivalRange] = useState('');
+  const [skipNotice, setSkipNotice] = useState<{ planId: string; text: string } | null>(null);
+  const [pendingSkip, setPendingSkip] = useState<{ planId: string; stopId: string } | null>(null);
+  const skipDialogRef = useRef<HTMLDialogElement | null>(null);
+  const cancelSkipRef = useRef<HTMLButtonElement | null>(null);
   const autocompleteControllerRef = useRef<AbortController | null>(null);
   const resolveControllerRef = useRef<AbortController | null>(null);
   const planningControllerRef = useRef<AbortController | null>(null);
   const nextStop = plan ? getNextCommuteStop(plan) : null;
   const gasStopCount = plan?.stops.filter((stop) => stop.type === 'gas').length ?? 0;
+  const canSkipStop = plan && plan.status !== 'completed'
+    && nextStop?.type === 'gas' && plan.currentStopIndex < plan.stops.length - 1;
+  useEffect(() => {
+    const dialog = skipDialogRef.current;
+    if (!dialog) return;
+
+    if (pendingSkip && canSkipStop && pendingSkip.planId === plan?.id
+      && pendingSkip.stopId === nextStop?.id) {
+      if (!dialog.open) {
+        dialog.showModal();
+        cancelSkipRef.current?.focus();
+      }
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  }, [pendingSkip, canSkipStop, plan?.id, nextStop?.id]);
   const safeCurrentRange = useMemo(() => {
     const range = Number(currentRange);
     return Number.isFinite(range) && range > 0 ? getSafeRangeMiles(range) : null;
@@ -246,6 +266,30 @@ export const CommutePanel = ({
     if (followingStop) {
       openPreferredDirections(followingStop);
     }
+  };
+
+  const requestSkipStop = () => {
+    if (!plan || !canSkipStop || !nextStop) {
+      return;
+    }
+
+    setPendingSkip({ planId: plan.id, stopId: nextStop.id });
+  };
+
+  const handleSkipStop = () => {
+    if (!plan || !canSkipStop || !nextStop
+      || pendingSkip?.planId !== plan.id || pendingSkip.stopId !== nextStop.id) {
+      return;
+    }
+
+    skipDialogRef.current?.close();
+    setPendingSkip(null);
+
+    const followingStop = plan.stops[plan.currentStopIndex + 1];
+    skipCurrentStop();
+    setErrorMessage(null);
+    setArrivalRange('');
+    setSkipNotice({ planId: plan.id, text: `Skipped ${nextStop.name}. Next stop: ${followingStop.name}.` });
   };
 
   if (!hasHydrated) {
@@ -443,6 +487,11 @@ export const CommutePanel = ({
                     />
                     <button type="submit" className="action-primary">Continue</button>
                   </div>
+                  {canSkipStop && (
+                    <button type="button" onClick={requestSkipStop} className="action-skip mt-3">
+                      <SkipForward aria-hidden="true" size={18} /> Skip stop
+                    </button>
+                  )}
                 </div>
               </div>
             </form>
@@ -454,7 +503,7 @@ export const CommutePanel = ({
               {nextStop.pricePerGallon !== undefined && (
                 <p className="mt-2 text-sm font-bold text-green-800 tabular-nums">${nextStop.pricePerGallon.toFixed(2)}/gal</p>
               )}
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <div className="mt-4 flex flex-col gap-2">
                 <a
                   href={getWebDirectionsUrl(nextStop)}
                   target="_blank"
@@ -467,21 +516,32 @@ export const CommutePanel = ({
                 >
                   <Navigation aria-hidden="true" size={18} /> Open next stop in Maps
                 </a>
-                <button type="button" onClick={onViewMap} className="action-secondary">View route</button>
+                <div className={`grid gap-2 ${canSkipStop ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {canSkipStop && (
+                    <button type="button" onClick={requestSkipStop} className="action-skip">
+                      <SkipForward aria-hidden="true" size={18} /> Skip stop
+                    </button>
+                  )}
+                  <button type="button" onClick={onViewMap} className="action-secondary">View route</button>
+                </div>
               </div>
             </div>
           )}
 
+          <p role="status" className="mt-2 text-sm text-muted-foreground">
+            {skipNotice?.planId === plan.id ? skipNotice.text : ''}
+          </p>
+
           <h4 className="mt-5 text-sm font-semibold">Your stops</h4>
           <ol className="mt-1">
             {plan.stops.map((stop, index) => (
-              <li key={stop.id} className="stop-row" data-state={plan.status === 'completed' || index < plan.currentStopIndex ? 'completed' : index === plan.currentStopIndex ? 'current' : 'upcoming'} aria-current={plan.status !== 'completed' && index === plan.currentStopIndex ? 'step' : undefined}>
+              <li key={stop.id} className="stop-row" data-state={plan.skippedStopIds?.includes(stop.id) ? 'skipped' : plan.status === 'completed' || index < plan.currentStopIndex ? 'completed' : index === plan.currentStopIndex ? 'current' : 'upcoming'} aria-current={plan.status !== 'completed' && index === plan.currentStopIndex ? 'step' : undefined}>
                 <span className="stop-number" aria-hidden="true">
-                  {plan.status === 'completed' || index < plan.currentStopIndex ? <Check size={15} /> : stop.type === 'gas' ? index + 1 : <MapPin size={15} />}
+                  {plan.skippedStopIds?.includes(stop.id) ? <SkipForward size={15} /> : plan.status === 'completed' || index < plan.currentStopIndex ? <Check size={15} /> : stop.type === 'gas' ? index + 1 : <MapPin size={15} />}
                 </span>
                 <div className="min-w-0 flex-1">
                   <h4 className="text-sm font-semibold break-words">{stop.name}</h4>
-                  <p className="mt-0.5 text-xs text-muted-foreground">{plan.status === 'completed' || index < plan.currentStopIndex ? 'Completed' : index === plan.currentStopIndex ? plan.status === 'awaiting_range' ? 'Update range to continue' : 'Current stop' : 'Upcoming'}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{plan.skippedStopIds?.includes(stop.id) ? 'Skipped' : plan.status === 'completed' || index < plan.currentStopIndex ? 'Completed' : index === plan.currentStopIndex ? plan.status === 'awaiting_range' ? 'Update range to continue' : 'Current stop' : 'Upcoming'}</p>
                   <p className="mt-1 text-xs text-muted-foreground break-words">{stop.address}</p>
                   {plan.legs[index] && <p className="mt-1 text-xs text-muted-foreground">{formatMiles(plan.legs[index].distanceMeters)} from previous point</p>}
                 </div>
@@ -491,6 +551,23 @@ export const CommutePanel = ({
           </ol>
         </section>
       )}
+      <dialog
+        ref={skipDialogRef}
+        role="alertdialog"
+        aria-labelledby="skip-dialog-title"
+        aria-describedby="skip-dialog-description"
+        onClose={() => setPendingSkip(null)}
+        className="skip-confirmation"
+      >
+        <h3 id="skip-dialog-title" className="text-center text-lg font-semibold">Are You Sure?</h3>
+        <p id="skip-dialog-description" className="mt-2 text-sm text-muted-foreground">
+          Skipping does not update your fuel range. Make sure you have enough fuel to reach the next stop.
+        </p>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <button type="button" onClick={handleSkipStop} className="action-skip">Yes</button>
+          <button ref={cancelSkipRef} type="button" onClick={() => skipDialogRef.current?.close()} className="action-secondary">No</button>
+        </div>
+      </dialog>
       {planningForm}
     </div>
   );

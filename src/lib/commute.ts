@@ -76,6 +76,12 @@ export const isCommutePlan = (value: unknown): value is CommutePlan => {
     && Number.isInteger(plan.currentStopIndex)
     && (plan.currentStopIndex ?? -1) >= 0
     && (plan.currentStopIndex ?? 0) < stopCount
+    && (plan.skippedStopIds === undefined || (
+      Array.isArray(plan.skippedStopIds)
+      && plan.skippedStopIds.every((id) => typeof id === 'string'
+        && plan.stops?.some((stop, index) => stop.id === id
+          && stop.type === 'gas' && index < (plan.currentStopIndex ?? 0)))
+    ))
     && Number.isFinite(plan.currentRangeMiles)
     && Number.isFinite(plan.fullTankRangeMiles)
     && Number.isFinite(plan.totalDistanceMeters)
