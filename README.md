@@ -80,6 +80,10 @@ npm run start   # serve the production build (run build first)
 
 There is currently no unit-test script. Validate changes with lint, build, and relevant browser checks.
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, commit message conventions, verification checks, and the `develop` → `main` pull-request workflow.
+
 ## Project structure
 
 - `src/app/` — App Router page, layout, styles, and API routes
