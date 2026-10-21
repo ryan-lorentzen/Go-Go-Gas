@@ -24,6 +24,7 @@ Go Go Gas! is a browser-based gas station finder and fuel-aware road-trip planne
 - Search and select a destination using Google Places address autocomplete.
 - Plan a road route from your current location using your current and full-tank ranges and preferred fuel grade.
 - Suggest gas stops along the route and show stop order, prices when available, and leg distances.
+- New commute plans only select stations whose price for the selected fuel grade was updated within the last 48 hours. Prices with missing, invalid, or future timestamps are excluded. If a required stop has no qualifying safely reachable station, planning fails rather than using stale prices. Saved plans are not automatically refreshed; Local Gas results are unchanged.
 - View the route on the map or open the next stop in a preferred maps app.
 - Track progress stop by stop: enter your updated range before continuing, with a safety check for the next leg.
 - Skip the next fuel stop, including while prompted for an updated range, after confirming the fuel-range warning to immediately select the following stop. Skipped stops remain labeled in your saved plan. Skipping does not update your range or recalculate the route; check that you have enough fuel to continue. The final destination cannot be skipped.

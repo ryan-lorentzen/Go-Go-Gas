@@ -26,6 +26,7 @@ const CANDIDATE_SEARCH_RADIUS_METERS = 5 * METERS_PER_MILE;
 const MAX_ROUTE_OFFSET_METERS = METERS_PER_MILE;
 const MAX_ADDED_DETOUR_METERS = METERS_PER_MILE;
 const MAX_TABLE_CANDIDATES = 24;
+const MAX_COMMUTE_PRICE_AGE_MS = 48 * 60 * 60 * 1_000;
 // Treat each projected future stop as a modest price penalty. This keeps the
 // itinerary practical without discarding a meaningfully cheaper nearby station.
 const FUTURE_STOP_PRICE_PENALTY = 0.1;
@@ -151,8 +152,20 @@ const projectPointToRoute = (
   return { progressMeters: bestProgress, distanceMeters: bestDistance };
 };
 
-const getFuelPrice = (station: GasStation, fuelGrade: CommutePlanRequest['fuelGrade']) =>
-  station.fuelPrices?.[fuelGrade] ?? null;
+const getFuelPrice = (station: GasStation, fuelGrade: CommutePlanRequest['fuelGrade']) => {
+  const fuelPrice = station.fuelPrices?.[fuelGrade];
+  if (!fuelPrice?.priceUpdatedAt) {
+    return null;
+  }
+
+  const updatedAt = Date.parse(fuelPrice.priceUpdatedAt);
+  const ageMs = Date.now() - updatedAt;
+  if (!Number.isFinite(updatedAt) || ageMs < 0 || ageMs > MAX_COMMUTE_PRICE_AGE_MS) {
+    return null;
+  }
+
+  return fuelPrice;
+};
 
 const searchAtRoutePoint = async (waypoint: RouteWaypoint, signal?: AbortSignal) =>
   fetchGasStationsInCircle({
@@ -343,7 +356,7 @@ export const buildCommutePlan = async (
     );
 
     if (!selectedStation) {
-      throw new Error('No safely reachable priced gas station was found within the one-mile detour limit.');
+      throw new Error('No safely reachable priced gas station with a price updated within the last 48 hours was found within the one-mile detour limit. Try a different route or plan again later.');
     }
 
     selectedStations.push(selectedStation);
