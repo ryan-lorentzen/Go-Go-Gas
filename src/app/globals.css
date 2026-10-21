@@ -103,8 +103,7 @@
   .map-panel { background: white; min-width: 0; }
   .map-legend { display: flex; align-items: center; justify-content: center; gap: 20px; padding: 8px 12px; font-size: 11px; color: var(--muted-foreground); border-bottom: 1px solid var(--border); }
   .map-legend span { display: flex; align-items: center; gap: 6px; }
-  .location-dot, .station-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--positive); }
-  .station-dot { background: var(--primary); }
+  .station-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
   .map-settings summary, .station-details summary, .planner-section summary { min-height: 48px; display: flex; align-items: center; gap: 8px; padding: 12px 16px; font-size: 13px; font-weight: 600; }
   .station-details { border-top: 1px solid var(--border); }
   .station-details summary { justify-content: space-between; }
