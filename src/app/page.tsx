@@ -766,7 +766,7 @@ export default function Home() {
             )}
             </div>
 
-            <aside className="map-panel" aria-label="Map details and settings">
+            {(commuteMapPlan || selectedGasStation || tripPlan || isTripEstimateLoading) && <aside className="map-panel" aria-label="Map details">
             {commuteMapPlan && (
               <div className="space-y-3 p-4">
                 <p className="text-xs text-muted-foreground">Saved commute route</p>
@@ -777,24 +777,6 @@ export default function Home() {
               </div>
             )}
 
-            {!commuteMapPlan && <details className="map-settings" open={!hasSearchedGas || !!gasStationsErrorMessage}>
-              <summary>Search settings <span className="ml-auto text-xs font-normal text-muted-foreground">{formatFuelGradeLabel(selectedFuelGrade)} · {searchRadiusMiles} mi</span><ChevronDown size={16} aria-hidden="true" /></summary>
-              <div className="px-4 pb-4">
-              <SearchControls
-                idPrefix="map"
-                selectedFuelGrade={selectedFuelGrade}
-                searchRadiusMiles={searchRadiusMiles}
-                hasSearchedGas={hasSearchedGas}
-                gasStationsToDisplayCount={gasStationsToDisplay.length}
-                gasStationsInRadiusCount={gasStationsInRadius.length}
-                isGasStationsLoading={isGasStationsLoading}
-                gasStationsErrorMessage={gasStationsErrorMessage}
-                onFuelGradeChange={setSelectedFuelGrade}
-                onSearchRadiusChange={setSearchRadiusMiles}
-              />
-              <button type="button" onClick={handleFindGasClick} disabled={!userLocation || isGasStationsLoading} className="action-primary mt-3 w-full"><Search size={18} aria-hidden="true" />{isGasStationsLoading ? 'Finding gas…' : 'Find local gas'}</button>
-              </div>
-            </details>}
             {!commuteMapPlan && selectedGasStation && <details className="station-details" open key={selectedGasStation.id}>
               <summary>Selected station<ChevronDown size={16} aria-hidden="true" /></summary>
               <div className="space-y-3 px-4 pb-4">
@@ -861,7 +843,7 @@ export default function Home() {
                 </div>
               </div>
             )}
-            </aside>
+            </aside>}
             </div>
           </section>
         </div>
