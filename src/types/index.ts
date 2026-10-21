@@ -40,9 +40,9 @@ export type RouteDirections = {
   | { status: 'loading' | 'unavailable' }
   | {
       status: 'ready';
-      distance: string;
+      distanceMeters: number;
       duration: string;
-      instructions: { text: string; distance: string }[];
+      instructions: { text: string; distanceMeters: number }[];
     }
 );
 

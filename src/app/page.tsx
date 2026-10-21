@@ -3,17 +3,20 @@
 import { getLiveGasStations } from '@/GasPrices/client';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { ChevronDown, MapPinned, Navigation, Route, Search } from 'lucide-react';
+import { ChevronDown, MapPinned, Navigation, Route, Search, Settings } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { CommutePanel } from '@/features/commute/components/CommutePanel';
 import { FuelGradeControl } from '@/components/FuelGradeControl';
 import { StatusMessage } from '@/components/StatusMessage';
+import { ThemeSetting } from '@/components/ThemeSetting';
 import { USER_LOCATION_ICON_URL } from '@/features/map/user-location-icon';
 import { getWebDirectionsUrl, openPreferredDirections } from '@/lib/mapLinks';
 import { buildTripPlan } from '@/features/map/components/routing-engine';
 import { COMMUTE_ARRIVAL_RADIUS_METERS, getNextCommuteStop } from '@/lib/commute';
 import { getRouteMetrics, haversineDistance } from '@/lib/routingUtils';
+import { distanceUnit, formatDistance, formatFuelPrice, formatInstructionDistance, fromMiles, METERS_PER_MILE, toMiles, UnitSystem, volumeUnit } from '@/lib/measurements';
+import { useFuelUnits, useMeasurements } from '@/lib/useMeasurements';
 import { useCommuteStore } from '@/store/useCommuteStore';
 import { useLocationStore } from '@/store/useLocationStore';
 import { FuelGrade, FuelPriceOption, GasStation, RouteDirections, RouteLegEstimate, TripEstimateSummary } from '@/types';
@@ -26,7 +29,7 @@ interface GasStationWithDistance extends GasStation {
 }
 
 type GasSortMode = 'best' | 'price' | 'distance';
-type AppTab = 'home' | 'map' | 'commute';
+type AppTab = 'home' | 'map' | 'commute' | 'settings';
 
 const FUEL_GRADE_OPTIONS: { value: FuelGrade; label: string }[] = [
   { value: 'regular', label: 'Regular' },
@@ -35,7 +38,6 @@ const FUEL_GRADE_OPTIONS: { value: FuelGrade; label: string }[] = [
   { value: 'diesel', label: 'Diesel' },
 ];
 
-const METERS_PER_MILE = 1_609.34;
 const MIN_SEARCH_RADIUS_MILES = 2;
 const MAX_SEARCH_RADIUS_MILES = 15;
 const DEFAULT_SEARCH_RADIUS_MILES = 4;
@@ -49,7 +51,6 @@ interface CachedGasStationsEntry {
   stations: GasStation[];
 }
 
-const formatMiles = (distanceMeters: number) => `${(distanceMeters / METERS_PER_MILE).toFixed(1)} mi`;
 const buildGasCacheKey = (latitude: number, longitude: number) =>
   `${latitude.toFixed(GAS_CACHE_LOCATION_PRECISION)}:${longitude.toFixed(GAS_CACHE_LOCATION_PRECISION)}`;
 
@@ -113,20 +114,25 @@ const SearchControls = ({
   gasStationsErrorMessage,
   onFuelGradeChange,
   onSearchRadiusChange,
-}: SearchControlsProps) => (
+}: SearchControlsProps) => {
+  const units = useMeasurements();
+  const radiusValue = Math.round(fromMiles(searchRadiusMiles, units));
+  const radiusLabel = `${radiusValue} ${distanceUnit(units)}`;
+  return (
   <div className="space-y-3">
     <FuelGradeControl value={selectedFuelGrade} onChange={onFuelGradeChange} />
     <div className="flex items-center gap-3">
       <label htmlFor={`${idPrefix}-radius`} className="field-label shrink-0">Radius</label>
-      <input id={`${idPrefix}-radius`} type="range" min={MIN_SEARCH_RADIUS_MILES}
-        max={MAX_SEARCH_RADIUS_MILES} step={1} value={searchRadiusMiles}
-        onChange={(event) => onSearchRadiusChange(Number(event.target.value))}
+      <input id={`${idPrefix}-radius`} type="range" min={units === 'metric' ? 3 : MIN_SEARCH_RADIUS_MILES}
+         max={units === 'metric' ? 24 : MAX_SEARCH_RADIUS_MILES} step={1} value={radiusValue}
+         aria-valuetext={radiusLabel}
+         onChange={(event) => onSearchRadiusChange(toMiles(Number(event.target.value), units))}
         className="min-h-11 min-w-0 flex-1 accent-primary" />
-      <output htmlFor={`${idPrefix}-radius`} className="w-12 text-right text-sm font-semibold tabular-nums">{searchRadiusMiles} mi</output>
+      <output htmlFor={`${idPrefix}-radius`} className="min-w-16 text-right text-sm font-semibold tabular-nums">{radiusLabel}</output>
     </div>
     <div aria-live="polite" className="text-xs text-muted-foreground">
       {isGasStationsLoading ? <p role="status">Finding live prices…</p> : hasSearchedGas && (
-        <p>{gasStationsToDisplayCount} stations with {formatFuelGradeLabel(selectedFuelGrade).toLowerCase()} prices within {searchRadiusMiles} mi.</p>
+        <p>{gasStationsToDisplayCount} stations with {formatFuelGradeLabel(selectedFuelGrade).toLowerCase()} prices within {radiusLabel}.</p>
       )}
       {gasStationsErrorMessage && <StatusMessage message={gasStationsErrorMessage} className="mt-2" />}
       {hasSearchedGas && !isGasStationsLoading && gasStationsInRadiusCount > 0 && gasStationsToDisplayCount === 0 && (
@@ -134,9 +140,14 @@ const SearchControls = ({
       )}
     </div>
   </div>
-);
+  );
+};
 
 export default function Home() {
+  const units = useMeasurements();
+  const fuelUnits = useFuelUnits();
+  const formatMiles = (meters: number) => formatDistance(meters, units);
+  const fuelUnit = volumeUnit(fuelUnits);
   const { latitude, longitude, accuracyMeters, setLocation } = useLocationStore();
   const { plan: commutePlan, hasHydrated: hasCommuteHydrated, markCurrentStopReached, completePlan } = useCommuteStore();
 
@@ -147,7 +158,12 @@ export default function Home() {
   const [selectedGasStationId, setSelectedGasStationId] = useState<string | null>(null);
   const [directions, setDirections] = useState<RouteDirections | null>(null);
   const [selectedFuelGrade, setSelectedFuelGrade] = useState<FuelGrade>('regular');
-  const [searchRadiusMiles, setSearchRadiusMiles] = useState(DEFAULT_SEARCH_RADIUS_MILES);
+  const [radiusSelection, setRadiusSelection] = useState<{ miles: number; units: UnitSystem }>({ miles: DEFAULT_SEARCH_RADIUS_MILES, units: 'us' });
+  // A unit switch chooses the nearest whole step in the new slider's bounds.
+  const searchRadiusMiles = radiusSelection.units === units ? radiusSelection.miles : toMiles(
+    Math.min(units === 'metric' ? 24 : MAX_SEARCH_RADIUS_MILES,
+      Math.max(units === 'metric' ? 3 : MIN_SEARCH_RADIUS_MILES, Math.round(fromMiles(radiusSelection.miles, units)))), units);
+  const setSearchRadiusMiles = (miles: number) => setRadiusSelection({ miles, units });
   const [isBestGasExpanded, setIsBestGasExpanded] = useState(true);
   const [gasSortMode, setGasSortMode] = useState<GasSortMode>('best');
   const [tripEstimateSummary, setTripEstimateSummary] = useState<TripEstimateSummary | null>(null);
@@ -664,14 +680,14 @@ export default function Home() {
                           <h4 className="text-sm font-semibold break-words">{station.name}</h4>
                           <p className="mt-1 text-xs text-muted-foreground break-words">{station.address}</p>
                           <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                            {station.distanceMiles !== null && <span>{station.distanceMiles.toFixed(1)} mi away</span>}
+                            {station.distanceMiles !== null && <span>{formatMiles(station.distanceMiles * METERS_PER_MILE)} away</span>}
                             <span>{formatFuelGradeLabel(selectedFuelGrade)}</span>
                             {station.priceUpdatedAt && <span>Updated {formatUpdatedTime(station.priceUpdatedAt)}</span>}
                           </div>
                         </div>
 
                         <div className="flex flex-col items-end gap-1">
-                          <span className="price-value">${station.pricePerGallon.toFixed(2)}<span className="block text-right text-xs font-normal text-muted-foreground">/gal</span></span>
+                          <span className="price-value">{formatFuelPrice(station.pricePerGallon, fuelUnits)}<span className="block text-right text-xs font-normal text-muted-foreground">/{fuelUnit}</span></span>
                           <button
                             type="button"
                             onClick={() => handleGasStationListClick(station.id)}
@@ -718,7 +734,7 @@ export default function Home() {
             className={activeTab === 'map' ? 'flex w-full flex-col items-center' : 'hidden'}
           >
             <h2 id="map-heading" className="sr-only">Map</h2>
-            <div className="map-workspace" data-selected={!!selectedGasStation}>
+            <div className="map-workspace">
             <div className="map-column">
             <div className="map-canvas">
               <PriceMap
@@ -747,7 +763,7 @@ export default function Home() {
                       <p className="text-sm text-muted-foreground">Directions are unavailable. Open this station in Maps for navigation.</p>
                     )}
                     {currentDirections?.status === 'ready' && (
-                      <p className="text-sm text-muted-foreground">{currentDirections.distance}, {currentDirections.duration}</p>
+                      <p className="text-sm text-muted-foreground">{formatMiles(currentDirections.distanceMeters)}, {currentDirections.duration}</p>
                     )}
                   </div>
                   {currentDirections?.status === 'ready' && (
@@ -755,7 +771,7 @@ export default function Home() {
                       {currentDirections.instructions.map((instruction, index) => (
                         <li key={index}>
                           <span>{instruction.text}</span>
-                          {instruction.distance && <span className="directions-distance">{instruction.distance}</span>}
+                          {instruction.distanceMeters > 0 && <span className="directions-distance">{formatInstructionDistance(instruction.distanceMeters, units)}</span>}
                         </li>
                       ))}
                     </ol>
@@ -780,9 +796,9 @@ export default function Home() {
             {!commuteMapPlan && selectedGasStation && <details className="station-details" open key={selectedGasStation.id}>
               <summary>Selected station<ChevronDown size={16} aria-hidden="true" /></summary>
               <div className="space-y-3 px-4 pb-4">
-                <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 text-base font-semibold break-words">{selectedGasStation.name}</h3><span className="price-value shrink-0">${selectedGasStation.pricePerGallon.toFixed(2)}<span className="block text-right text-xs font-normal text-muted-foreground">/gal</span></span></div>
+                <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 text-base font-semibold break-words">{selectedGasStation.name}</h3><span className="price-value shrink-0">{formatFuelPrice(selectedGasStation.pricePerGallon, fuelUnits)}<span className="block text-right text-xs font-normal text-muted-foreground">/{fuelUnit}</span></span></div>
                 <p className="text-sm text-muted-foreground break-words">{selectedGasStation.address}</p>
-                <p className="text-xs text-muted-foreground">{formatFuelGradeLabel(selectedFuelGrade)}{selectedGasStation.distanceMiles !== null && ` · ${selectedGasStation.distanceMiles.toFixed(1)} mi away`}</p>
+                <p className="text-xs text-muted-foreground">{formatFuelGradeLabel(selectedFuelGrade)}{selectedGasStation.distanceMiles !== null && ` · ${formatMiles(selectedGasStation.distanceMiles * METERS_PER_MILE)} away`}</p>
                 {selectedGasStation.priceUpdatedAt && <p className="text-xs text-muted-foreground">Updated {formatUpdatedTime(selectedGasStation.priceUpdatedAt)}</p>}
                 <a className="action-primary w-full" href={getWebDirectionsUrl(selectedGasStation)} target="_blank" rel="noreferrer" onClick={(event) => { event.preventDefault(); openPreferredDirections(selectedGasStation); }}><Navigation size={18} aria-hidden="true" />Open in Maps</a>
                 {commutePlan && <button type="button" onClick={() => setSelectedGasStationId(null)} className="action-secondary w-full">Return to commute route</button>}
@@ -846,6 +862,15 @@ export default function Home() {
             </aside>}
             </div>
           </section>
+
+          <section
+            aria-labelledby="settings-heading"
+            aria-hidden={activeTab !== 'settings'}
+            className={activeTab === 'settings' ? 'w-full' : 'hidden'}
+          >
+            <div className="page-heading"><h2 id="settings-heading">Settings</h2></div>
+            <ThemeSetting />
+          </section>
         </div>
       </div>
 
@@ -877,6 +902,15 @@ export default function Home() {
           >
             <Route aria-hidden="true" size={19} />
             Commuter Gas
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('settings')}
+            aria-current={activeTab === 'settings' ? 'page' : undefined}
+            className="nav-item"
+          >
+            <Settings aria-hidden="true" size={19} />
+            Settings
           </button>
         </div>
       </nav>

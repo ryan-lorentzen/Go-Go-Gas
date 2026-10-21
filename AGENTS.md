@@ -83,6 +83,14 @@ Do not commit `.env*` files or API keys. The frontend `.gitignore` excludes them
 - Keep map interactions usable on touch devices, including popup close and routing controls.
 - Avoid exposing raw API errors or secrets in the UI; display actionable user-facing messages instead.
 
+### UI Copy Restraint
+
+- Do not add unrequested descriptions, subtitles, helper text, tooltips, or explanatory paragraphs to screens or controls. A clear label is the default; do not add copy just to fill space or make a feature feel complete.
+- Do not restate a control's label in a description. For example, a **Dark mode** toggle needs no "Use a darker appearance." text beneath it.
+- Add supporting text only when explicitly requested or necessary to explain a non-obvious requirement, consequence, error, or next action. Keep it brief and actionable.
+- Preserve accessible names and necessary instructions for assistive technology; copy restraint must not remove essential accessibility information.
+- When reviewing UI changes, remove newly introduced copy that does not help the user make a decision or complete the requested task.
+
 ## Change Verification
 
 Keep `README.md` accurate as the product and development workflow evolve. Whenever a change adds, removes, or materially changes a user-facing feature, integration, setup/configuration requirement, command, or deployment behavior, update the relevant README section in the same change. Do not document planned or unsupported behavior as current functionality. Periodically check that README feature descriptions and commands still match the implementation and `package.json` scripts.

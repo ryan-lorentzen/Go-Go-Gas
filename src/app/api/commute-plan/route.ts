@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as unknown;
     if (!isPlanRequest(body)) {
       return NextResponse.json(
-        { error: 'Enter a valid US destination, fuel grade, and ranges between 5 and 1,000 miles.' },
+        { error: 'Enter a valid US destination and fuel grade, with ranges greater than 5 miles and no more than 1,000 miles.' },
         { status: 400 }
       );
     }

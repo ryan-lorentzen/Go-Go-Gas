@@ -6,7 +6,10 @@ Go Go Gas! is a browser-based gas station finder and fuel-aware road-trip planne
 
 ### Interface
 
-- Three sections: Map, Local Gas, and Commuter Gas, with safe-area-aware bottom navigation on mobile and header navigation on desktop.
+- Four sections: Map, Local Gas, Commuter Gas, and Settings, with safe-area-aware bottom navigation on mobile and header navigation on desktop.
+- Settings includes independent Dark mode and Dark map switches, both off by default regardless of the device theme. Each choice is saved in this browser across reloads and reopening the app; when browser storage is unavailable, it lasts for the current session. Dark mode uses a #171717 background and themes forms, dropdowns, dialogs, navigation, and map controls. Dark map applies a dark treatment only to the map tiles, so a light map can be used with dark mode or a dark map with light mode.
+- Settings has separate, saved Metric distance units and Metric fuel units switches, both off for new users. Distance units control kilometers/meters versus miles/yards across range fields, directions, estimates, and saved commutes. Fuel units independently control USD per liter versus USD per US gallon across station lists, markers, popups, and commutes. An existing combined metric preference initializes both switches once, after which they are independent. Range calculations and storage still use miles, routing uses meters, and source prices remain per US gallon; switching display units preserves range drafts and does not replan an existing route.
+- The radius slider uses whole steps: 2–15 miles or 3–24 kilometers, with the selected value converted to meters for searches. Switching distance units snaps the radius to the nearest whole step within the new bounds. Current/full-tank range placeholders are 200/300 in miles and 300/400 in kilometers; these are examples, not prefilled values.
 - Local Gas contains the fuel-grade and radius search controls and sortable station rows with aligned prices. The Map tab displays those results, expandable station details, and directions without duplicate search controls.
 - Saved commute details and the next required action appear before the expandable form for planning another route.
 
@@ -17,6 +20,7 @@ Go Go Gas! is a browser-based gas station finder and fuel-aware road-trip planne
 - Filter results by fuel grade (regular, midgrade, premium, or diesel) and search radius.
 - Rank stations by score, price, or distance.
 - Browse station prices and locations on an interactive Leaflet map; select a station to inspect it and route to it.
+- Selecting a station keeps the map at the same height. On mobile, scroll below the map to reach directions, station details, and trip estimates.
 - Expand Directions below the map for turn-by-turn instructions, route distance, and drive time to the selected station. The route stays visible without an instructions overlay. If directions are unavailable, use Open in Maps; fallback trip estimates are not turn-by-turn directions.
 - Handles denied location access, missing configuration, empty results, and changing searches with user-facing status messages.
 
