@@ -20,6 +20,7 @@ Go Go Gas! is a browser-based gas station finder and fuel-aware road-trip planne
 - Filter results by fuel grade (regular, midgrade, premium, or diesel) and search radius.
 - Rank stations by score, price, or distance.
 - Browse station prices and locations on an interactive Leaflet map; select a station to inspect it and route to it.
+- Selecting a station keeps the map at the same height. On mobile, scroll below the map to reach directions, station details, and trip estimates.
 - Expand Directions below the map for turn-by-turn instructions, route distance, and drive time to the selected station. The route stays visible without an instructions overlay. If directions are unavailable, use Open in Maps; fallback trip estimates are not turn-by-turn directions.
 - Handles denied location access, missing configuration, empty results, and changing searches with user-facing status messages.
 

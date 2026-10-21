@@ -734,7 +734,7 @@ export default function Home() {
             className={activeTab === 'map' ? 'flex w-full flex-col items-center' : 'hidden'}
           >
             <h2 id="map-heading" className="sr-only">Map</h2>
-            <div className="map-workspace" data-selected={!!selectedGasStation}>
+            <div className="map-workspace">
             <div className="map-column">
             <div className="map-canvas">
               <PriceMap
