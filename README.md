@@ -6,7 +6,7 @@ Go Go Gas! is a browser-based gas station finder and fuel-aware road-trip planne
 
 ### Interface
 
-- Three sections: Map, Local Gas, and Commuter Gas, with safe-area-aware bottom navigation on mobile and header navigation on desktop.
+- Four sections: Map, Local Gas, Commuter Gas, and Settings, with safe-area-aware bottom navigation on mobile and header navigation on desktop. Settings currently opens a blank screen with a Settings heading.
 - Local Gas contains the fuel-grade and radius search controls and sortable station rows with aligned prices. The Map tab displays those results, expandable station details, and directions without duplicate search controls.
 - Saved commute details and the next required action appear before the expandable form for planning another route.
 

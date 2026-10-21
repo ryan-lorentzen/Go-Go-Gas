@@ -112,7 +112,7 @@
   .empty-state p { font-size: 14px; font-weight: 600; color: var(--foreground); }
   .empty-state span { max-width: 32ch; font-size: 13px; }
   .primary-nav { position: fixed; z-index: 1100; bottom: 0; inset-inline: 0; height: var(--nav-height); background: white; border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .nav-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); max-width: 600px; margin: auto; padding-inline: max(8px, env(safe-area-inset-left)); }
+  .nav-items { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 600px; margin: auto; padding-inline: max(8px, env(safe-area-inset-left)); }
   .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 59px; font-size: 11px; font-weight: 600; color: var(--muted-foreground); position: relative; }
   .nav-item[aria-current="page"] { color: var(--primary); }
   .nav-item[aria-current="page"]::before { content: ""; position: absolute; top: 0; width: 28px; height: 3px; border-radius: 0 0 3px 3px; background: var(--primary); }
@@ -147,7 +147,7 @@
   @media (min-width: 768px) {
     :root { --nav-height: 0px; }
     .app-header { padding-inline: 24px; }
-    .primary-nav { position: absolute; top: env(safe-area-inset-top, 0px); right: 24px; left: auto; bottom: auto; width: 410px; height: 56px; border: 0; padding: 0; }
+    .primary-nav { position: absolute; top: env(safe-area-inset-top, 0px); right: 24px; left: auto; bottom: auto; width: 500px; height: 56px; border: 0; padding: 0; }
     .nav-items { padding: 0; }
     .nav-item { flex-direction: row; height: 56px; font-size: 13px; gap: 8px; }
     .nav-item[aria-current="page"]::before { top: auto; bottom: 0; width: 36px; border-radius: 3px 3px 0 0; }

@@ -3,7 +3,7 @@
 import { getLiveGasStations } from '@/GasPrices/client';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { ChevronDown, MapPinned, Navigation, Route, Search } from 'lucide-react';
+import { ChevronDown, MapPinned, Navigation, Route, Search, Settings } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { CommutePanel } from '@/features/commute/components/CommutePanel';
@@ -26,7 +26,7 @@ interface GasStationWithDistance extends GasStation {
 }
 
 type GasSortMode = 'best' | 'price' | 'distance';
-type AppTab = 'home' | 'map' | 'commute';
+type AppTab = 'home' | 'map' | 'commute' | 'settings';
 
 const FUEL_GRADE_OPTIONS: { value: FuelGrade; label: string }[] = [
   { value: 'regular', label: 'Regular' },
@@ -846,6 +846,14 @@ export default function Home() {
             </aside>}
             </div>
           </section>
+
+          <section
+            aria-labelledby="settings-heading"
+            aria-hidden={activeTab !== 'settings'}
+            className={activeTab === 'settings' ? 'w-full' : 'hidden'}
+          >
+            <div className="page-heading"><h2 id="settings-heading">Settings</h2></div>
+          </section>
         </div>
       </div>
 
@@ -877,6 +885,15 @@ export default function Home() {
           >
             <Route aria-hidden="true" size={19} />
             Commuter Gas
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('settings')}
+            aria-current={activeTab === 'settings' ? 'page' : undefined}
+            className="nav-item"
+          >
+            <Settings aria-hidden="true" size={19} />
+            Settings
           </button>
         </div>
       </nav>
