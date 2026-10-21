@@ -1,87 +1,86 @@
-import L from "leaflet";
-import userLocationIcon from "./user-location-marker";
-import { createControlComponent } from "@react-leaflet/core";
-import "leaflet-routing-machine";
+import L from 'leaflet';
+import { useEffect } from 'react';
+import { useMap } from 'react-leaflet';
+import 'leaflet-routing-machine';
+import type { RouteDirections, RouteWaypoint } from '@/types';
+import userLocationIcon from './user-location-marker';
 
-interface RoutingMachineProps extends L.ControlOptions {
-  waypoints: L.LatLng[];
+interface RoutingMachineProps {
+  waypoints: RouteWaypoint[];
+  routeKey: string;
+  onDirectionsChange: (directions: RouteDirections) => void;
 }
 
-const createRoutineMachineLayer = (props: RoutingMachineProps) => {
-  const instance = L.Routing.control({
-    collapsible: true,
-    collapseBtn: (itinerary: L.Routing.Itinerary) => {
-      const container = itinerary.getContainer();
-      if (!container) return;
-      const button = L.DomUtil.create('button', 'leaflet-routing-collapse-btn');
-      button.type = 'button';
-      button.setAttribute('aria-label', 'Toggle route instructions');
-      button.setAttribute('aria-expanded', 'true');
-      L.DomEvent.on(button, 'click', () => {
-        const isCollapsed = container.classList.contains('leaflet-routing-container-hide');
-        if (isCollapsed) itinerary.show();
-        else itinerary.hide();
-        button.setAttribute('aria-expanded', String(isCollapsed));
-      });
-      container.prepend(button);
-    },
-    plan: L.Routing.plan(props.waypoints, {
-      addWaypoints: false,
-      draggableWaypoints: true,
-      createMarker: function (i: number, waypoint: L.Routing.Waypoint) {
-        if (i === 0) {
-          return L.marker(waypoint.latLng, {
-            icon: userLocationIcon
-          });
-        }
-        return false;
+export default function RoutingMachine({ waypoints, routeKey, onDirectionsChange }: RoutingMachineProps) {
+  const map = useMap();
+
+  useEffect(() => {
+    const formatter = new L.Routing.Formatter({
+      units: 'imperial',
+      distanceTemplate: '{value} {unit}',
+    });
+    // Routing Machine mixes in Leaflet events, but its types omit Evented.off.
+    const control = L.Routing.control({
+      // React renders the itinerary below the map; Leaflet only draws the route.
+      show: false,
+      collapsible: false,
+      plan: L.Routing.plan(waypoints.map(point => L.latLng(point.lat, point.lng)), {
+        addWaypoints: false,
+        draggableWaypoints: true,
+        createMarker: (index: number, waypoint: L.Routing.Waypoint) =>
+          index === 0 ? L.marker(waypoint.latLng, { icon: userLocationIcon }) : false,
+      }),
+      lineOptions: {
+        styles: [{ color: '#6FA1EC', weight: 4 }],
+        extendToWaypoints: true,
+        missingRouteTolerance: 100,
+      },
+      routeWhileDragging: true,
+      fitSelectedRoutes: false,
+      showAlternatives: false,
+      formatter,
+    }) as L.Routing.Control & L.Evented;
+
+    const onLoading = () => onDirectionsChange({ routeKey, status: 'loading' });
+    const onUnavailable = () => onDirectionsChange({ routeKey, status: 'unavailable' });
+    const onRoutesFound = (event: L.Routing.RoutingResultEvent) => {
+      const route = event.routes[0];
+      if (!route?.summary || !route.instructions?.length || !route.coordinates?.length) {
+        onUnavailable();
+        return;
       }
-    }),
-    lineOptions: {
-      styles: [{ color: "#6FA1EC", weight: 4 }],
-      extendToWaypoints: true,
-      missingRouteTolerance: 100
-    },
-    routeWhileDragging: true,
-    show: true,
-    fitSelectedRoutes: false,
-    showAlternatives: false,
-    formatter: new L.Routing.Formatter({
-      units: "imperial",
-      distanceTemplate: '{value} {unit}'
-    }),
-    summaryTemplate: '<h2>{name}</h2><h3>{distance}, {time}</h3>'
-  } as L.Routing.RoutingControlOptions & { collapsed: boolean });
 
-  instance.on('routesfound', (event: L.Routing.RoutingResultEvent) => {
-    const routeCoordinates = event.routes[0]?.coordinates;
+      onDirectionsChange({
+        routeKey,
+        status: 'ready',
+        distance: formatter.formatDistance(route.summary.totalDistance),
+        duration: formatter.formatTime(route.summary.totalTime),
+        instructions: route.instructions.map(instruction => ({
+          text: formatter.formatInstruction(instruction),
+          distance: instruction.distance > 0 ? formatter.formatDistance(instruction.distance) : '',
+        })),
+      });
 
-    if (!routeCoordinates || routeCoordinates.length === 0) {
-      return;
-    }
+      const bounds = L.latLngBounds(route.coordinates);
+      const zoom = map.getBoundsZoom(bounds, false, L.point(32, 32));
+      if (zoom !== undefined) {
+        map.setView(bounds.getCenter(), Math.min(map.getZoom(), zoom), { animate: true });
+      }
+    };
 
-    const map = (instance as L.Routing.Control & { _map?: L.Map })._map;
+    control.on('routingstart', onLoading);
+    control.on('routingerror', onUnavailable);
+    control.on('routesfound', onRoutesFound);
+    control.addTo(map);
+    const container = control.getContainer();
+    if (container) container.style.display = 'none';
 
-    if (!map) {
-      return;
-    }
+    return () => {
+      // Ignore responses from a route that has been replaced or unmounted.
+      control.off();
+      map.removeControl(control);
+    };
+  }, [map, waypoints, routeKey, onDirectionsChange]);
 
-    const routeBounds = L.latLngBounds(routeCoordinates);
-    const padding = L.point(32, 32);
-    const zoomToFitRoute = map.getBoundsZoom(routeBounds, false, padding);
-
-    if (zoomToFitRoute === undefined) {
-      return;
-    }
-
-    map.setView(routeBounds.getCenter(), Math.min(map.getZoom(), zoomToFitRoute), { animate: true });
-  });
-
-  return instance;
-};
-
-const RoutingMachine = createControlComponent<L.Routing.Control, RoutingMachineProps>(
-  createRoutineMachineLayer
-);
-
-export default RoutingMachine;
+  return null;
+}

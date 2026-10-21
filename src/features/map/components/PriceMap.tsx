@@ -1,6 +1,6 @@
 'use client';
 
-import { CommutePlan, CommuteStop, GasStation } from '@/types';
+import { CommutePlan, CommuteStop, GasStation, RouteDirections } from '@/types';
 import { useLocationStore } from '@/store/useLocationStore';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
@@ -13,6 +13,7 @@ interface PriceMapProps {
   onGasStationClick?: (id: string) => void;
   selectedGasStationId?: string | null;
   waypoints?: { lat: number; lng: number }[];
+  onDirectionsChange: (directions: RouteDirections) => void;
   gasStations?: GasStation[];
   locationErrorMessage?: string | null;
   isVisible?: boolean;
@@ -384,7 +385,7 @@ const formatUpdatedTime = (timestamp?: string) => {
   }).format(parsedDate);
 };
 
-export const PriceMap = ({ onGasStationClick, selectedGasStationId, waypoints, gasStations, locationErrorMessage, isVisible = true, initialSearchRadiusMiles, commutePlan }: PriceMapProps) => {
+export const PriceMap = ({ onGasStationClick, selectedGasStationId, waypoints, onDirectionsChange, gasStations, locationErrorMessage, isVisible = true, initialSearchRadiusMiles, commutePlan }: PriceMapProps) => {
   const { latitude, longitude } = useLocationStore();
 
 
@@ -443,7 +444,7 @@ export const PriceMap = ({ onGasStationClick, selectedGasStationId, waypoints, g
 
         {commutePlan && <CommuteRouteView plan={commutePlan} isVisible={isVisible} />}
         {!commutePlan && waypoints && waypoints.length >= 2 && (
-          <RoutingMachine key={waypoints.map(p => `${p.lat}-${p.lng}`).join('_')} waypoints={waypoints.map(p => L.latLng(p.lat, p.lng))} />
+          <RoutingMachine waypoints={waypoints} routeKey={waypoints.map(p => `${p.lat}-${p.lng}`).join('_')} onDirectionsChange={onDirectionsChange} />
         )}
       </MapContainer>
     </div>

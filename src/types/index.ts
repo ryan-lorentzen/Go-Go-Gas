@@ -34,6 +34,18 @@ export interface RouteWaypoint {
   lng: number;
 }
 
+export type RouteDirections = {
+  routeKey: string;
+} & (
+  | { status: 'loading' | 'unavailable' }
+  | {
+      status: 'ready';
+      distance: string;
+      duration: string;
+      instructions: { text: string; distance: string }[];
+    }
+);
+
 export interface RouteStop {
   id: string;
   name: string;
