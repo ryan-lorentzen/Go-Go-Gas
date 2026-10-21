@@ -112,6 +112,7 @@ export interface CommutePlan {
   totalDistanceMeters: number;
   totalDurationSeconds: number;
   currentStopIndex: number;
+  skippedStopIds?: string[];
   status: CommutePlanStatus;
 }
 

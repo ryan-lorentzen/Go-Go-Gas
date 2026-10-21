@@ -13,6 +13,7 @@ interface CommuteState {
   clearPlan: () => void;
   setHasHydrated: (hasHydrated: boolean) => void;
   markCurrentStopReached: () => void;
+  skipCurrentStop: () => void;
   acceptRangeAndAdvance: (rangeMiles: number) => void;
   completePlan: () => void;
 }
@@ -34,6 +35,23 @@ export const useCommuteStore = create<CommuteState>()(
           plan: {
             ...state.plan,
             status: 'awaiting_range',
+          },
+        };
+      }),
+      skipCurrentStop: () => set((state) => {
+        const plan = state.plan;
+        const stop = plan?.stops[plan.currentStopIndex];
+        if (!plan || (plan.status !== 'active' && plan.status !== 'awaiting_range')
+          || stop?.type !== 'gas' || plan.currentStopIndex >= plan.stops.length - 1) {
+          return state;
+        }
+
+        return {
+          plan: {
+            ...plan,
+            currentStopIndex: plan.currentStopIndex + 1,
+            skippedStopIds: [...(plan.skippedStopIds ?? []), stop.id],
+            status: 'active',
           },
         };
       }),
