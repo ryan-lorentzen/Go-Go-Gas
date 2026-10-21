@@ -160,16 +160,18 @@
 .leaflet-popup-content-wrapper { border-radius: 10px; color: var(--foreground); padding-right: 4px; }
 .leaflet-popup-content { margin: 16px 20px 16px 16px; max-width: min(240px, calc(100vw - 100px)); }
 .leaflet-popup-content p { margin: 8px 0; }
-.leaflet-container a.leaflet-popup-close-button { top: 3px; right: 3px; width: 44px; height: 44px; line-height: 44px; font-size: 24px; color: var(--foreground); }
+.leaflet-container a.leaflet-popup-close-button { top: 3px; right: 3px; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; line-height: 1; font-size: 24px; color: var(--foreground); }
 .leaflet-popup-content h3 { padding-right: 24px; font-size: 15px; }
 .leaflet-container a.action-primary { color: white; }
 .leaflet-bar a { min-width: 44px; min-height: 44px; line-height: 44px; color: var(--foreground); }
+.leaflet-control-zoom.leaflet-bar a { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; line-height: 1; }
+.leaflet-control-zoom.leaflet-bar a > span { line-height: 1; }
 .leaflet-control-container .leaflet-routing-container { background: white; color: var(--foreground); border-radius: 8px; box-shadow: 0 2px 8px #182b381a; width: min(300px, calc(100vw - 78px)); height: auto; max-height: 40vh; overflow-y: auto; padding: 44px 8px 8px; }
 .leaflet-routing-container h2, .leaflet-routing-container h3, .leaflet-routing-alt { color: var(--foreground); }
-.leaflet-routing-collapse-btn { position: absolute; top: 0; right: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: white; color: var(--foreground); font-size: 24px; border-radius: 8px; }
+.leaflet-routing-collapse-btn { position: absolute; top: 0; right: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; background: white; color: var(--foreground); font-size: 24px; border-radius: 8px; }
 .leaflet-routing-collapse-btn::after { content: '\00d7'; }
 .leaflet-control-container .leaflet-routing-container-hide { width: 44px; height: 44px; padding: 0; overflow: hidden; }
-.leaflet-routing-container-hide .leaflet-routing-collapse-btn { position: static; display: flex; width: 44px; height: 44px; background-image: none; }
+.leaflet-routing-container-hide .leaflet-routing-collapse-btn { position: absolute; inset: 0; display: flex; width: 100%; height: 100%; background-image: none; }
 .leaflet-routing-container-hide .leaflet-routing-alt, .leaflet-routing-container-hide .leaflet-routing-geocoders { display: none; }
 .leaflet-routing-container-hide .leaflet-routing-collapse-btn::after { content: '+'; color: var(--primary); }
 .gas-price-marker, .commute-stop-marker { background: transparent; border: 0; }
