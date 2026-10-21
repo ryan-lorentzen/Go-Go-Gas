@@ -6,7 +6,8 @@ Go Go Gas! is a browser-based gas station finder and fuel-aware road-trip planne
 
 ### Interface
 
-- Four sections: Map, Local Gas, Commuter Gas, and Settings, with safe-area-aware bottom navigation on mobile and header navigation on desktop. Settings currently opens a blank screen with a Settings heading.
+- Four sections: Map, Local Gas, Commuter Gas, and Settings, with safe-area-aware bottom navigation on mobile and header navigation on desktop.
+- Settings includes independent Dark mode and Dark map switches, both off by default regardless of the device theme. Each choice is saved in this browser across reloads and reopening the app; when browser storage is unavailable, it lasts for the current session. Dark mode uses a #171717 background and themes forms, dropdowns, dialogs, navigation, and map controls. Dark map applies a dark treatment only to the map tiles, so a light map can be used with dark mode or a dark map with light mode.
 - Local Gas contains the fuel-grade and radius search controls and sortable station rows with aligned prices. The Map tab displays those results, expandable station details, and directions without duplicate search controls.
 - Saved commute details and the next required action appear before the expandable form for planning another route.
 

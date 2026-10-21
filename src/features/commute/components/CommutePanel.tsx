@@ -307,7 +307,7 @@ export const CommutePanel = ({
           <div>
             <label htmlFor="commute-address" className="field-label">Destination</label>
             <div className="relative mt-2">
-              <MapPin aria-hidden="true" size={18} className="absolute left-3 top-3.5 text-slate-400" />
+              <MapPin aria-hidden="true" size={18} className="absolute left-3 top-3.5 text-muted-foreground" />
               <input
                 id="commute-address"
                 value={address}
@@ -331,17 +331,17 @@ export const CommutePanel = ({
                 maxLength={160}
                 required
               />
-              <span className="absolute right-3 top-3.5 text-slate-400" aria-hidden="true">
+              <span className="absolute right-3 top-3.5 text-muted-foreground" aria-hidden="true">
                 {isSearchingAddress || isResolvingAddress
                   ? <LoaderCircle size={18} className="animate-spin" />
-                  : selectedDestination ? <Check size={18} className="text-emerald-600" /> : null}
+                  : selectedDestination ? <Check size={18} className="text-positive" /> : null}
               </span>
 
               {destinationSuggestions.length > 0 && (
                 <div
                   id="commute-address-suggestions"
                   role="listbox"
-                  className="absolute inset-x-0 top-[calc(100%+0.25rem)] z-20 max-h-64 overflow-y-auto rounded-lg border bg-white shadow-md"
+                  className="absolute inset-x-0 top-[calc(100%+0.25rem)] z-20 max-h-64 overflow-y-auto rounded-lg border bg-surface shadow-md"
                 >
                   {destinationSuggestions.map((suggestion, index) => (
                     <button
@@ -353,7 +353,7 @@ export const CommutePanel = ({
                       onMouseDown={(event) => event.preventDefault()}
                       onMouseEnter={() => setActiveSuggestionIndex(index)}
                       onClick={() => void selectSuggestion(suggestion)}
-                      className={`block min-h-11 w-full border-b px-3 py-3 text-left last:border-b-0 ${activeSuggestionIndex === index ? 'bg-secondary' : 'bg-white hover:bg-secondary'}`}
+                      className={`block min-h-11 w-full border-b px-3 py-3 text-left last:border-b-0 ${activeSuggestionIndex === index ? 'bg-secondary' : 'bg-surface hover:bg-secondary'}`}
                     >
                       <span className="block text-sm font-semibold">{suggestion.mainText}</span>
                       {suggestion.secondaryText && (
@@ -459,7 +459,7 @@ export const CommutePanel = ({
           <p className="mt-3 text-xs text-muted-foreground">Last entered range: <span className="font-semibold tabular-nums">{plan.currentRangeMiles} mi</span></p>
 
           {plan.status === 'completed' ? (
-            <div className="mt-4 rounded-lg bg-green-50 p-3 text-green-900" role="status">
+            <div className="mt-4 rounded-lg bg-positive-surface p-3 text-positive" role="status">
               <p className="font-semibold">Destination reached</p>
               <p className="mt-1 text-sm">This completed route remains saved until you clear or replace it.</p>
             </div>
@@ -501,7 +501,7 @@ export const CommutePanel = ({
               <p className="mt-1 font-semibold break-words">{nextStop.name}</p>
               <p className="mt-1 text-sm text-muted-foreground break-words">{nextStop.address}</p>
               {nextStop.pricePerGallon !== undefined && (
-                <p className="mt-2 text-sm font-bold text-green-800 tabular-nums">${nextStop.pricePerGallon.toFixed(2)}/gal</p>
+                <p className="mt-2 text-sm font-bold text-positive tabular-nums">${nextStop.pricePerGallon.toFixed(2)}/gal</p>
               )}
               <div className="mt-4 flex flex-col gap-2">
                 <a
@@ -545,7 +545,7 @@ export const CommutePanel = ({
                   <p className="mt-1 text-xs text-muted-foreground break-words">{stop.address}</p>
                   {plan.legs[index] && <p className="mt-1 text-xs text-muted-foreground">{formatMiles(plan.legs[index].distanceMeters)} from previous point</p>}
                 </div>
-                {stop.pricePerGallon !== undefined && <span className="text-sm font-bold text-green-800 tabular-nums">${stop.pricePerGallon.toFixed(2)}<span className="block text-right text-xs font-normal text-muted-foreground">/gal</span></span>}
+                {stop.pricePerGallon !== undefined && <span className="text-sm font-bold text-positive tabular-nums">${stop.pricePerGallon.toFixed(2)}<span className="block text-right text-xs font-normal text-muted-foreground">/gal</span></span>}
               </li>
             ))}
           </ol>

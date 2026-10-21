@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CommutePanel } from '@/features/commute/components/CommutePanel';
 import { FuelGradeControl } from '@/components/FuelGradeControl';
 import { StatusMessage } from '@/components/StatusMessage';
+import { ThemeSetting } from '@/components/ThemeSetting';
 import { USER_LOCATION_ICON_URL } from '@/features/map/user-location-icon';
 import { getWebDirectionsUrl, openPreferredDirections } from '@/lib/mapLinks';
 import { buildTripPlan } from '@/features/map/components/routing-engine';
@@ -853,6 +854,7 @@ export default function Home() {
             className={activeTab === 'settings' ? 'w-full' : 'hidden'}
           >
             <div className="page-heading"><h2 id="settings-heading">Settings</h2></div>
+            <ThemeSetting />
           </section>
         </div>
       </div>

@@ -217,7 +217,7 @@ const GasPriceClusterLayer = ({ gasStations, onGasStationClick, selectedGasStati
             <div className="font-sans text-foreground">
               <h3 className="font-semibold">{station.name}</h3>
               <p className="text-xs text-muted-foreground">{station.address}</p>
-              <p className="text-sm font-semibold text-green-800 tabular-nums">${station.pricePerGallon.toFixed(2)}/gal</p>
+              <p className="text-sm font-semibold text-positive tabular-nums">${station.pricePerGallon.toFixed(2)}/gal</p>
               {station.fuelType && <p className="text-xs text-muted-foreground">{formatFuelType(station.fuelType)}</p>}
               {station.priceUpdatedAt && (
                 <p className="text-xs text-muted-foreground">Updated {formatUpdatedTime(station.priceUpdatedAt)}</p>
@@ -335,7 +335,7 @@ const CommuteRouteView = ({ plan, isVisible }: { plan: CommutePlan; isVisible: b
               </p>
               <h3 className="mt-1 font-semibold">{stop.name}</h3>
               <p className="text-xs text-muted-foreground">{stop.address}</p>
-              {stop.pricePerGallon !== undefined && <p className="mt-1 font-semibold text-green-800 tabular-nums">${stop.pricePerGallon.toFixed(2)}/gal</p>}
+              {stop.pricePerGallon !== undefined && <p className="mt-1 font-semibold text-positive tabular-nums">${stop.pricePerGallon.toFixed(2)}/gal</p>}
               <a
                 href={getWebDirectionsUrl(stop)}
                 target="_blank"
@@ -403,10 +403,10 @@ export const PriceMap = ({ onGasStationClick, selectedGasStationId, waypoints, o
     return (
       <div className="flex h-full w-full items-center justify-center bg-transparent px-6 text-center">
         <div>
-          <p className="text-lg font-semibold text-slate-900">
+          <p className="text-lg font-semibold text-foreground">
             {locationErrorMessage ? 'Location unavailable' : 'Locating your current position'}
           </p>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-muted-foreground">
             {locationErrorMessage ?? 'Allow location access so the map can start at where you are now.'}
           </p>
         </div>
