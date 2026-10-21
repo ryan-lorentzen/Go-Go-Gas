@@ -1,6 +1,7 @@
 import { CommutePlan, RouteWaypoint } from '@/types';
+import { METERS_PER_MILE } from '@/lib/measurements';
 
-export const METERS_PER_MILE = 1_609.34;
+export { METERS_PER_MILE };
 export const COMMUTE_ARRIVAL_RADIUS_METERS = 0.25 * METERS_PER_MILE;
 export const MAX_COMMUTE_ROUTE_MILES = 2_000;
 export const MAX_COMMUTE_GAS_STOPS = 8;

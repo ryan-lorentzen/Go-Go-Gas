@@ -18,10 +18,11 @@ import {
   METERS_PER_MILE,
 } from '@/lib/commute';
 import { getWebDirectionsUrl, openPreferredDirections } from '@/lib/mapLinks';
+import { distanceUnit, formatDistance, formatFuelPrice, formatMeasurementMessage, formatRange, fromMiles, volumeUnit } from '@/lib/measurements';
+import { useFuelUnits, useMeasurements, useRangeInput } from '@/lib/useMeasurements';
 import { useCommuteStore } from '@/store/useCommuteStore';
 import { FuelGrade, GeocodedDestination, RouteWaypoint } from '@/types';
 
-const formatMiles = (distanceMeters: number) => `${(distanceMeters / METERS_PER_MILE).toFixed(1)} mi`;
 const createSessionToken = () => crypto.randomUUID();
 
 const formatDuration = (seconds: number) => {
@@ -44,10 +45,17 @@ export const CommutePanel = ({
   onPlanReady,
   onViewMap,
 }: CommutePanelProps) => {
+  const units = useMeasurements();
+  const fuelUnits = useFuelUnits();
+  const formatMiles = (meters: number) => formatDistance(meters, units);
+  const rangeUnit = distanceUnit(units);
+  const fuelUnit = volumeUnit(fuelUnits);
+  const minRange = fromMiles(5, units);
+  const maxRange = fromMiles(1000, units);
   const { plan, hasHydrated, setPlan, clearPlan, acceptRangeAndAdvance, skipCurrentStop } = useCommuteStore();
   const [address, setAddress] = useState('');
-  const [currentRange, setCurrentRange] = useState('');
-  const [fullTankRange, setFullTankRange] = useState('');
+  const { value: currentRange, miles: currentRangeInputMiles, onChange: setCurrentRange } = useRangeInput(units);
+  const { value: fullTankRange, miles: fullTankRangeInputMiles, onChange: setFullTankRange } = useRangeInput(units);
   const [fuelGrade, setFuelGrade] = useState<FuelGrade>('regular');
   const [destinationSuggestions, setDestinationSuggestions] = useState<DestinationSuggestion[]>([]);
   const [selectedDestination, setSelectedDestination] = useState<GeocodedDestination | null>(null);
@@ -57,7 +65,7 @@ export const CommutePanel = ({
   const [isResolvingAddress, setIsResolvingAddress] = useState(false);
   const [isPlanning, setIsPlanning] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [arrivalRange, setArrivalRange] = useState('');
+  const { value: arrivalRange, miles: arrivalRangeInputMiles, onChange: setArrivalRange } = useRangeInput(units);
   const [skipNotice, setSkipNotice] = useState<{ planId: string; text: string } | null>(null);
   const [pendingSkip, setPendingSkip] = useState<{ planId: string; stopId: string } | null>(null);
   const skipDialogRef = useRef<HTMLDialogElement | null>(null);
@@ -84,9 +92,9 @@ export const CommutePanel = ({
     }
   }, [pendingSkip, canSkipStop, plan?.id, nextStop?.id]);
   const safeCurrentRange = useMemo(() => {
-    const range = Number(currentRange);
-    return Number.isFinite(range) && range > 0 ? getSafeRangeMiles(range) : null;
-  }, [currentRange]);
+    const range = currentRangeInputMiles;
+    return range !== null && Number.isFinite(range) && range > 0 ? getSafeRangeMiles(range) : null;
+  }, [currentRangeInputMiles]);
 
   useEffect(() => {
     const trimmedAddress = address.trim();
@@ -190,15 +198,17 @@ export const CommutePanel = ({
       return;
     }
 
-    const currentRangeMiles = Number(currentRange);
-    const fullTankRangeMiles = Number(fullTankRange);
+    const currentRangeMiles = currentRangeInputMiles ?? NaN;
+    const fullTankRangeMiles = fullTankRangeInputMiles ?? NaN;
     if (
       !Number.isFinite(currentRangeMiles)
       || !Number.isFinite(fullTankRangeMiles)
       || currentRangeMiles <= 5
       || fullTankRangeMiles <= 5
+      || currentRangeMiles > 1000
+      || fullTankRangeMiles > 1000
     ) {
-      setErrorMessage('Enter current and full-tank ranges greater than 5 miles.');
+      setErrorMessage('Enter current and full-tank ranges greater than 5 miles and no more than 1,000 miles.');
       return;
     }
 
@@ -245,16 +255,16 @@ export const CommutePanel = ({
       return;
     }
 
-    const rangeMiles = Number(arrivalRange);
+    const rangeMiles = arrivalRangeInputMiles ?? NaN;
     const nextLeg = getLegAfterCurrentStop(plan);
-    if (!Number.isFinite(rangeMiles) || rangeMiles <= 5) {
-      setErrorMessage('Enter an estimated range greater than 5 miles.');
+    if (!Number.isFinite(rangeMiles) || rangeMiles <= 5 || rangeMiles > 1000) {
+      setErrorMessage('Enter an estimated range greater than 5 miles and no more than 1,000 miles.');
       return;
     }
 
     if (nextLeg && getSafeRangeMiles(rangeMiles) * METERS_PER_MILE < nextLeg.distanceMeters) {
       setErrorMessage(
-        `That range is not enough to safely cover the next ${formatMiles(nextLeg.distanceMeters)} leg. Add fuel and enter the updated range.`
+        `That range is not enough to safely cover the next ${formatDistance(nextLeg.distanceMeters, 'us')} leg. Add fuel and enter the updated range.`
       );
       return;
     }
@@ -374,36 +384,36 @@ export const CommutePanel = ({
 
           <div className="range-fields">
             <div>
-              <label htmlFor="current-range" className="field-label">Current range (mi)</label>
+              <label htmlFor="current-range" className="field-label">Current range ({rangeUnit})</label>
               <input
                 id="current-range"
                 type="number"
                 inputMode="decimal"
-                min="6"
-                max="1000"
-                step="1"
+                min={minRange}
+                max={maxRange}
+                step="any"
                 value={currentRange}
                 onChange={(event) => setCurrentRange(event.target.value)}
-                placeholder="400"
+                placeholder={units === 'metric' ? '300' : '200'}
                 className="form-input mt-2"
                 required
               />
               {safeCurrentRange !== null && (
-                <p className="mt-2 text-xs text-muted-foreground">First stop within {safeCurrentRange.toFixed(0)} safe miles.</p>
+                <p className="mt-2 text-xs text-muted-foreground">First stop within {formatRange(safeCurrentRange, units)} safely.</p>
               )}
             </div>
             <div>
-              <label htmlFor="full-tank-range" className="field-label">Full-tank range (mi)</label>
+              <label htmlFor="full-tank-range" className="field-label">Full-tank range ({rangeUnit})</label>
               <input
                 id="full-tank-range"
                 type="number"
                 inputMode="decimal"
-                min="6"
-                max="1000"
-                step="1"
+                min={minRange}
+                max={maxRange}
+                step="any"
                 value={fullTankRange}
                 onChange={(event) => setFullTankRange(event.target.value)}
-                placeholder="420"
+                placeholder={units === 'metric' ? '400' : '300'}
                 className="form-input mt-2"
                 required
               />
@@ -430,7 +440,7 @@ export const CommutePanel = ({
 
   return (
     <div className="commute-panel flex w-full flex-col gap-4">
-      {errorMessage && <StatusMessage message={errorMessage} />}
+      {errorMessage && <StatusMessage message={formatMeasurementMessage(errorMessage, units)} />}
       {plan && (
         <section className="saved-plan surface p-4" aria-labelledby="active-route-heading">
           <div className="flex items-start justify-between gap-3">
@@ -456,7 +466,7 @@ export const CommutePanel = ({
             <div><dt className="text-xs text-muted-foreground">Drive time</dt><dd className="mt-1 font-semibold">{formatDuration(plan.totalDurationSeconds)}</dd></div>
             <div><dt className="text-xs text-muted-foreground">Fuel stops</dt><dd className="mt-1 font-semibold">{gasStopCount}</dd></div>
           </dl>
-          <p className="mt-3 text-xs text-muted-foreground">Last entered range: <span className="font-semibold tabular-nums">{plan.currentRangeMiles} mi</span></p>
+          <p className="mt-3 text-xs text-muted-foreground">Last entered range: <span className="font-semibold tabular-nums">{formatRange(plan.currentRangeMiles, units)}</span></p>
 
           {plan.status === 'completed' ? (
             <div className="mt-4 rounded-lg bg-positive-surface p-3 text-positive" role="status">
@@ -471,17 +481,17 @@ export const CommutePanel = ({
                   <h4 className="font-semibold break-words">You are near {nextStop?.name}</h4>
                   <p className="mt-1 text-sm">Enter your updated range before continuing.</p>
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <label htmlFor="arrival-range" className="sr-only">Updated estimated range in miles</label>
+                    <label htmlFor="arrival-range" className="sr-only">Updated estimated range in {units === 'metric' ? 'kilometers' : 'miles'}</label>
                     <input
                       id="arrival-range"
                       type="number"
                       inputMode="decimal"
-                      min="6"
-                      max="1000"
-                      step="1"
+                      min={minRange}
+                      max={maxRange}
+                      step="any"
                       value={arrivalRange}
                       onChange={(event) => setArrivalRange(event.target.value)}
-                      placeholder="Updated miles"
+                      placeholder={`Updated ${rangeUnit}`}
                       className="form-input flex-1"
                       required
                     />
@@ -501,7 +511,7 @@ export const CommutePanel = ({
               <p className="mt-1 font-semibold break-words">{nextStop.name}</p>
               <p className="mt-1 text-sm text-muted-foreground break-words">{nextStop.address}</p>
               {nextStop.pricePerGallon !== undefined && (
-                <p className="mt-2 text-sm font-bold text-positive tabular-nums">${nextStop.pricePerGallon.toFixed(2)}/gal</p>
+                <p className="mt-2 text-sm font-bold text-positive tabular-nums">{formatFuelPrice(nextStop.pricePerGallon, fuelUnits)}/{fuelUnit}</p>
               )}
               <div className="mt-4 flex flex-col gap-2">
                 <a
@@ -545,7 +555,7 @@ export const CommutePanel = ({
                   <p className="mt-1 text-xs text-muted-foreground break-words">{stop.address}</p>
                   {plan.legs[index] && <p className="mt-1 text-xs text-muted-foreground">{formatMiles(plan.legs[index].distanceMeters)} from previous point</p>}
                 </div>
-                {stop.pricePerGallon !== undefined && <span className="text-sm font-bold text-positive tabular-nums">${stop.pricePerGallon.toFixed(2)}<span className="block text-right text-xs font-normal text-muted-foreground">/gal</span></span>}
+                {stop.pricePerGallon !== undefined && <span className="text-sm font-bold text-positive tabular-nums">{formatFuelPrice(stop.pricePerGallon, fuelUnits)}<span className="block text-right text-xs font-normal text-muted-foreground">/{fuelUnit}</span></span>}
               </li>
             ))}
           </ol>

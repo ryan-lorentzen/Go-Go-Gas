@@ -1,3 +1,5 @@
+import { FUEL_UNITS_STORAGE_KEY, UNITS_STORAGE_KEY } from '@/lib/measurements';
+
 export type Theme = 'light' | 'dark';
 
 export const THEME_STORAGE_KEY = 'go-go-gas-theme';
@@ -12,6 +14,17 @@ export const themeInitializationScript = `(() => {
   let mapTheme = 'light';
   try { if (localStorage.getItem(${JSON.stringify(MAP_THEME_STORAGE_KEY)}) === 'dark') mapTheme = 'dark'; } catch {}
   document.documentElement.dataset.mapTheme = mapTheme;
+  let units = 'us';
+  try { if (localStorage.getItem(${JSON.stringify(UNITS_STORAGE_KEY)}) === 'metric') units = 'metric'; } catch {}
+  document.documentElement.dataset.units = units;
+  let fuelUnits = 'us';
+  try {
+    const savedFuelUnits = localStorage.getItem(${JSON.stringify(FUEL_UNITS_STORAGE_KEY)});
+    // Preserve an existing combined preference once, then save each independently.
+    fuelUnits = savedFuelUnits === null ? units : savedFuelUnits === 'metric' ? 'metric' : 'us';
+    if (savedFuelUnits === null) localStorage.setItem(${JSON.stringify(FUEL_UNITS_STORAGE_KEY)}, fuelUnits);
+  } catch {}
+  document.documentElement.dataset.fuelUnits = fuelUnits;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = theme === 'dark' ? '#171717' : '#ffffff';
 })();`;

@@ -53,11 +53,11 @@ export default function RoutingMachine({ waypoints, routeKey, onDirectionsChange
       onDirectionsChange({
         routeKey,
         status: 'ready',
-        distance: formatter.formatDistance(route.summary.totalDistance),
+        distanceMeters: route.summary.totalDistance,
         duration: formatter.formatTime(route.summary.totalTime),
         instructions: route.instructions.map(instruction => ({
           text: formatter.formatInstruction(instruction),
-          distance: instruction.distance > 0 ? formatter.formatDistance(instruction.distance) : '',
+          distanceMeters: instruction.distance,
         })),
       });
 

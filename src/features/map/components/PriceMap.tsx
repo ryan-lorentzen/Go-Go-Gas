@@ -8,6 +8,8 @@ import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap, useMapEvents 
 import RoutingMachine from "./routing-machine";
 import userLocationIcon from './user-location-marker';
 import { getWebDirectionsUrl, openPreferredDirections } from '@/lib/mapLinks';
+import { formatFuelPrice, UnitSystem, volumeUnit } from '@/lib/measurements';
+import { useFuelUnits } from '@/lib/useMeasurements';
 
 interface PriceMapProps {
   onGasStationClick?: (id: string) => void;
@@ -45,13 +47,13 @@ interface VisibleGasStation {
   };
 }
 
-const buildPriceIcon = (pricePerGallon: number, hiddenCount: number) =>
+const buildPriceIcon = (pricePerGallon: number, hiddenCount: number, units: UnitSystem) =>
   L.divIcon({
     className: 'gas-price-marker',
     html: `
       <div class="gas-price-marker__wrap">
         <span class="gas-price-marker__price">
-          $${pricePerGallon.toFixed(2)}
+          ${formatFuelPrice(pricePerGallon, units)}${units === 'metric' ? '/L' : ''}
           ${hiddenCount > 0 ? `<span class="gas-price-marker__count">+${hiddenCount}</span>` : ''}
         </span>
         <span class="gas-price-marker__pin"></span>
@@ -146,6 +148,7 @@ const getVisibleGasStations = (
 };
 
 const GasPriceClusterLayer = ({ gasStations, onGasStationClick, selectedGasStationId }: GasStationClusterMarkerProps) => {
+  const units = useFuelUnits();
   const map = useMap();
   const [viewTick, setViewTick] = useState(0);
   const markerRefs = useRef(new Map<string, L.Marker>());
@@ -206,7 +209,7 @@ const GasPriceClusterLayer = ({ gasStations, onGasStationClick, selectedGasStati
             }
           }}
           position={[station.coordinates.lat, station.coordinates.lng]}
-          icon={buildPriceIcon(station.pricePerGallon, hiddenCount)}
+          icon={buildPriceIcon(station.pricePerGallon, hiddenCount, units)}
           eventHandlers={{
             click: () => {
               onGasStationClick?.(station.id);
@@ -217,7 +220,7 @@ const GasPriceClusterLayer = ({ gasStations, onGasStationClick, selectedGasStati
             <div className="font-sans text-foreground">
               <h3 className="font-semibold">{station.name}</h3>
               <p className="text-xs text-muted-foreground">{station.address}</p>
-              <p className="text-sm font-semibold text-positive tabular-nums">${station.pricePerGallon.toFixed(2)}/gal</p>
+              <p className="text-sm font-semibold text-positive tabular-nums">{formatFuelPrice(station.pricePerGallon, units)}/{volumeUnit(units)}</p>
               {station.fuelType && <p className="text-xs text-muted-foreground">{formatFuelType(station.fuelType)}</p>}
               {station.priceUpdatedAt && (
                 <p className="text-xs text-muted-foreground">Updated {formatUpdatedTime(station.priceUpdatedAt)}</p>
@@ -299,6 +302,7 @@ const InitialMapView = ({
 };
 
 const CommuteRouteView = ({ plan, isVisible }: { plan: CommutePlan; isVisible: boolean }) => {
+  const units = useFuelUnits();
   const map = useMap();
   const previousPlanIdRef = useRef<string | null>(null);
 
@@ -335,7 +339,7 @@ const CommuteRouteView = ({ plan, isVisible }: { plan: CommutePlan; isVisible: b
               </p>
               <h3 className="mt-1 font-semibold">{stop.name}</h3>
               <p className="text-xs text-muted-foreground">{stop.address}</p>
-              {stop.pricePerGallon !== undefined && <p className="mt-1 font-semibold text-positive tabular-nums">${stop.pricePerGallon.toFixed(2)}/gal</p>}
+              {stop.pricePerGallon !== undefined && <p className="mt-1 font-semibold text-positive tabular-nums">{formatFuelPrice(stop.pricePerGallon, units)}/{volumeUnit(units)}</p>}
               <a
                 href={getWebDirectionsUrl(stop)}
                 target="_blank"
