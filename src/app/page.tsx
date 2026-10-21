@@ -16,7 +16,7 @@ import { COMMUTE_ARRIVAL_RADIUS_METERS, getNextCommuteStop } from '@/lib/commute
 import { getRouteMetrics, haversineDistance } from '@/lib/routingUtils';
 import { useCommuteStore } from '@/store/useCommuteStore';
 import { useLocationStore } from '@/store/useLocationStore';
-import { FuelGrade, FuelPriceOption, GasStation, RouteLegEstimate, TripEstimateSummary } from '@/types';
+import { FuelGrade, FuelPriceOption, GasStation, RouteDirections, RouteLegEstimate, TripEstimateSummary } from '@/types';
 
 const PriceMap = dynamic(() => import('@/features/map/components/PriceMap').then(mod => mod.PriceMap), { ssr: false });
 
@@ -145,6 +145,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<AppTab>('home');
   const [hasSearchedGas, setHasSearchedGas] = useState(false);
   const [selectedGasStationId, setSelectedGasStationId] = useState<string | null>(null);
+  const [directions, setDirections] = useState<RouteDirections | null>(null);
   const [selectedFuelGrade, setSelectedFuelGrade] = useState<FuelGrade>('regular');
   const [searchRadiusMiles, setSearchRadiusMiles] = useState(DEFAULT_SEARCH_RADIUS_MILES);
   const [isBestGasExpanded, setIsBestGasExpanded] = useState(true);
@@ -288,6 +289,8 @@ export default function Home() {
     },
     [tripPlan]
   );
+  const directionsRouteKey = dynamicWaypoints.map(point => `${point.lat}-${point.lng}`).join('_');
+  const currentDirections = directions?.routeKey === directionsRouteKey ? directions : null;
 
   useEffect(() => {
     const searchLatitude = localGasLocation?.lat ?? null;
@@ -716,11 +719,13 @@ export default function Home() {
           >
             <h2 id="map-heading" className="sr-only">Map</h2>
             <div className="map-workspace" data-selected={!!selectedGasStation}>
+            <div className="map-column">
             <div className="map-canvas">
               <PriceMap
                 onGasStationClick={handleGasStationMapClick}
                 selectedGasStationId={activeSelectedGasStationId}
                 waypoints={dynamicWaypoints}
+                onDirectionsChange={setDirections}
                 gasStations={!commuteMapPlan && hasSearchedGas ? gasStationsToDisplay : []}
                 locationErrorMessage={locationErrorMessage}
                 isVisible={activeTab === 'map'}
@@ -728,9 +733,40 @@ export default function Home() {
                 commutePlan={commuteMapPlan}
               />
             </div>
+            <div className="map-legend"><span><Image src={USER_LOCATION_ICON_URL} alt="" width={15} height={25} unoptimized />Your location</span><span><i className="station-dot" />Gas station</span></div>
+            {!commuteMapPlan && selectedGasStation && dynamicWaypoints.length >= 2 && (
+              <details className="map-directions" key={directionsRouteKey}>
+                <summary>Directions<ChevronDown size={18} aria-hidden="true" /></summary>
+                <div className="px-4 pb-4">
+                  <p className="mb-3 text-sm font-semibold break-words">To {selectedGasStation.name}</p>
+                  <div aria-live="polite">
+                    {(!currentDirections || currentDirections.status === 'loading') && (
+                      <p className="text-sm text-muted-foreground" role="status">Finding directions…</p>
+                    )}
+                    {currentDirections?.status === 'unavailable' && (
+                      <p className="text-sm text-muted-foreground">Directions are unavailable. Open this station in Maps for navigation.</p>
+                    )}
+                    {currentDirections?.status === 'ready' && (
+                      <p className="text-sm text-muted-foreground">{currentDirections.distance}, {currentDirections.duration}</p>
+                    )}
+                  </div>
+                  {currentDirections?.status === 'ready' && (
+                    <ol className="directions-steps mt-3" aria-label="Turn-by-turn directions">
+                      {currentDirections.instructions.map((instruction, index) => (
+                        <li key={index}>
+                          <span>{instruction.text}</span>
+                          {instruction.distance && <span className="directions-distance">{instruction.distance}</span>}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                  <a className="action-secondary mt-3" href={getWebDirectionsUrl(selectedGasStation)} target="_blank" rel="noreferrer" onClick={(event) => { event.preventDefault(); openPreferredDirections(selectedGasStation); }}><Navigation size={16} aria-hidden="true" />Open in Maps</a>
+                </div>
+              </details>
+            )}
+            </div>
 
             <aside className="map-panel" aria-label="Map details and settings">
-            <div className="map-legend"><span><Image src={USER_LOCATION_ICON_URL} alt="" width={15} height={25} unoptimized />Your location</span><span><i className="station-dot" />Gas station</span></div>
             {commuteMapPlan && (
               <div className="space-y-3 p-4">
                 <p className="text-xs text-muted-foreground">Saved commute route</p>
